@@ -1,0 +1,353 @@
+# =============================================================================
+# E-Commerce Project .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# ENVIRONMENT VARIABLES (CRITICAL - Never commit these!)
+# -----------------------------------------------------------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+!example.env
+backend/.env
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
+
+# -----------------------------------------------------------------------------
+# PYTHON / FASTAPI BACKEND
+# -----------------------------------------------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Backend uploads
+backend/uploads/
+backend/uploads/products/
+*.upload
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# -----------------------------------------------------------------------------
+# NODE.JS / NEXT.JS FRONTEND
+# -----------------------------------------------------------------------------
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Directory for instrumented libs
+lib-cov/
+
+# Coverage directory
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output/
+
+# Grunt intermediate storage
+.grunt
+
+# Bower dependency directory
+bower_components/
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons
+build/Release/
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn
+.yarn-integrity
+.yarn-cache/
+
+# Parcel
+.cache/
+.parcel-cache/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# Vercel
+.vercel
+
+# Typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# -----------------------------------------------------------------------------
+# OPERATING SYSTEM FILES
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# -----------------------------------------------------------------------------
+# IDE AND EDITOR FILES
+# -----------------------------------------------------------------------------
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*.un~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+
+# -----------------------------------------------------------------------------
+# LOG FILES
+# -----------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# -----------------------------------------------------------------------------
+# TESTING AND DEBUGGING
+# -----------------------------------------------------------------------------
+# Playwright
+playwright-report/
+playwright/.cache/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+
+# -----------------------------------------------------------------------------
+# BUILD ARTIFACTS
+# -----------------------------------------------------------------------------
+# Backend
+backend/dist/
+backend/build/
+
+# Frontend
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# -----------------------------------------------------------------------------
+# SENSITIVE FILES
+# -----------------------------------------------------------------------------
+# Private keys
+*.pem
+*.key
+*.crt
+*.cer
+
+# SSH
+*.pub
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# Tokens
+*.token
+*.secret
+
+# -----------------------------------------------------------------------------
+# DOCKER (Optional - uncomment if using Docker)
+# -----------------------------------------------------------------------------
+# docker-compose.override.yml
+.docker/
+
+# -----------------------------------------------------------------------------
+# DOCUMENTATION (Optional - keep MD files but ignore drafts)
+# -----------------------------------------------------------------------------
+# *.md
+!README.md
+*.draft.md
+*.todo.md
+
+# -----------------------------------------------------------------------------
+# BACKUP FILES
+# -----------------------------------------------------------------------------
+*.bak
+*.backup
+*.old
+*_backup_*
+
+# -----------------------------------------------------------------------------
+# MISCELLANEOUS
+# -----------------------------------------------------------------------------
+# Package lock files (if using yarn)
+# package-lock.json
+
+# Husky
+.husky/
+
+# Local development files
+*.local
+*.dev
+
+# Temporary project files
+tmp/
+temp/
+.tmp/
+.temp/
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar

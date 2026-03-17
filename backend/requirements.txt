@@ -1,0 +1,17 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+python-jose[cryptography]==3.4.0
+bcrypt==4.2.0
+python-multipart==0.0.17
+pydantic==2.10.4
+pydantic-settings==2.7.0
+alembic==1.14.0
+stripe==11.3.0
+Pillow==11.0.0
+python-dotenv==1.0.1
+email-validator==2.3.0
+slowapi==0.1.9
+cloudinary==1.41.0
+reportlab==4.2.0
