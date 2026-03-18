@@ -101,6 +101,9 @@ backend/uploads/products/
 *.sqlite
 *.sqlite3
 
+# But NOT frontend source lib
+!frontend/src/lib/
+
 # -----------------------------------------------------------------------------
 # NODE.JS / NEXT.JS FRONTEND
 # -----------------------------------------------------------------------------
