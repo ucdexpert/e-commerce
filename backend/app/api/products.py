@@ -260,10 +260,10 @@ def get_related_products(
     db: Session = Depends(get_db)
 ):
     product = get_product_by_id(product_id, db)
-    
+
     # Get category IDs
     category_ids = [cat.id for cat in product.categories]
-    
+
     if not category_ids:
         return ProductListResponse(
             products=[],
@@ -272,7 +272,7 @@ def get_related_products(
             per_page=limit,
             total_pages=0
         )
-    
+
     # Find related products in same categories with eager loading
     related = db.query(Product).options(
         joinedload(Product.categories)
@@ -281,7 +281,7 @@ def get_related_products(
         Product.is_active == True,
         Product.categories.any(Category.id.in_(category_ids))
     ).limit(limit).all()
-    
+
     return ProductListResponse(
         products=related,
         total=len(related),
@@ -289,6 +289,28 @@ def get_related_products(
         per_page=limit,
         total_pages=1
     )
+
+@router.get("/{product_id}/reviews")
+async def get_product_reviews(
+    product_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get all reviews for a product"""
+    product = get_product_by_id(product_id, db)
+    
+    reviews = db.query(Review).filter(
+        Review.product_id == product_id,
+        Review.is_approved == True
+    ).order_by(Review.created_at.desc()).all()
+    
+    total = len(reviews)
+    avg_rating = sum(r.rating for r in reviews) / total if total > 0 else 0
+    
+    return {
+        "reviews": reviews,
+        "total": total,
+        "average_rating": round(avg_rating, 1)
+    }
 
 @router.post("/{product_id}/reviews")
 def add_review(
@@ -299,7 +321,20 @@ def add_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    """Add a review to a product"""
     product = get_product_by_id(product_id, db)
+
+    # Check if user already reviewed this product
+    existing = db.query(Review).filter(
+        Review.product_id == product_id,
+        Review.user_id == current_user.id
+    ).first()
+    
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Aap pehle hi review de chuke hain. Ek se zyada reviews allow nahi hain."
+        )
 
     # Create review with authenticated user
     review = Review(
