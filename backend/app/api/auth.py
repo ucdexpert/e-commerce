@@ -21,16 +21,31 @@ from ..schemas import (
     TokenRefresh,
     UserUpdate,
 )
-from datetime import timedelta
+from datetime import datetime, timedelta
 from ..core.config import settings
-from ..utils.email import send_reset_email
+from ..utils.email import send_reset_email, send_verification_email
 from pydantic import BaseModel, EmailStr
 import re
+from jose import jwt
+import os
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # Initialize rate limiter for auth endpoints
 limiter = Limiter(key_func=get_remote_address)
+
+
+def create_verification_token(email: str) -> str:
+    """
+    Create email verification token.
+    Expires in 24 hours.
+    """
+    expire = datetime.utcnow() + timedelta(hours=24)
+    return jwt.encode(
+        {"sub": email, "exp": expire, "type": "verify"},
+        os.getenv("SECRET_KEY"),
+        algorithm="HS256"
+    )
 
 
 def validate_password(password: str) -> bool:
@@ -154,7 +169,8 @@ async def register(request: Request, user_data: UserCreate, db: Session = Depend
         username=user_data.username,
         full_name=user_data.full_name,
         phone=user_data.phone,
-        hashed_password=get_password_hash(user_data.password)
+        hashed_password=get_password_hash(user_data.password),
+        is_verified=False  # Not verified yet
     )
     db.add(user)
     db.commit()
@@ -170,7 +186,86 @@ async def register(request: Request, user_data: UserCreate, db: Session = Depend
 
     db.commit()
 
+    # Send verification email
+    try:
+        token = create_verification_token(user.email)
+        send_verification_email(user.email, token)
+    except Exception as e:
+        print(f"Failed to send verification email: {e}")
+        # Don't fail registration if email fails
+
     return user
+
+@router.get("/verify-email")
+async def verify_email(token: str, db: Session = Depends(get_db)):
+    """
+    Verify user's email address using token from email.
+    """
+    try:
+        # Decode token
+        payload = jwt.decode(
+            token,
+            os.getenv("SECRET_KEY"),
+            algorithms=["HS256"]
+        )
+        
+        # Check token type
+        if payload.get("type") != "verify":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid token type"
+            )
+        
+        # Get email from token
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid token"
+            )
+        
+        # Find user
+        user = db.query(User).filter(User.email == email).first()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        if user.is_verified:
+            return {
+                "message": "Email already verified",
+                "already_verified": True
+            }
+        
+        # Mark user as verified
+        user.is_verified = True
+        db.commit()
+        
+        return {
+            "message": "Email verified successfully! You can now login.",
+            "already_verified": False
+        }
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification token has expired"
+        )
+    except jwt.JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Email verification error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token"
+        )
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")  # Max 5 login attempts per minute

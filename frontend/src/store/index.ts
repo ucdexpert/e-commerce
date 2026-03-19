@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Cart, Product, User, Wishlist } from '@/lib/api';
 import { cartApi, wishlistApi, authApi } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface AuthState {
   user: User | null;

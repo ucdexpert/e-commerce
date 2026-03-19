@@ -41,6 +41,77 @@ def send_email(to_email: str, subject: str, html: str) -> bool:
         return False
 
 
+def send_verification_email(email: str, token: str) -> bool:
+    """
+    Send email verification email to user.
+
+    Args:
+        email: Recipient email address
+        token: Email verification token
+
+    Returns:
+        True if email sent successfully, False otherwise
+    """
+    verify_url = f"{os.getenv('FRONTEND_URL')}/verify-email?token={token}"
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #2563EB; font-size: 48px; margin: 0;">🎉</h1>
+            </div>
+
+            <h2 style="color: #2563EB; margin-bottom: 20px;">Welcome to E-Shop!</h2>
+
+            <p style="margin-bottom: 20px;">
+                Thank you for registering! Please verify your email address to activate your account:
+            </p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{verify_url}"
+                   style="background-color: #2563EB; color: white;
+                          padding: 14px 28px; text-decoration: none;
+                          border-radius: 8px; display: inline-block;
+                          font-weight: bold;">
+                    Verify Email
+                </a>
+            </div>
+
+            <p style="margin-bottom: 20px;">
+                Or copy and paste this link into your browser:
+            </p>
+
+            <p style="background-color: #f3f4f6; padding: 10px; border-radius: 4px;
+                      word-break: break-all; font-size: 14px;">
+                {verify_url}
+            </p>
+
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+            <p style="color: #666; font-size: 14px;">
+                <strong>Important:</strong> This link expires in 24 hours.
+            </p>
+
+            <p style="color: #666; font-size: 14px;">
+                If you didn't create this account, you can safely ignore this email.
+            </p>
+
+            <p style="margin-top: 30px; color: #666; font-size: 12px;">
+                © {__import__('datetime').datetime.now().year} E-Shop. All rights reserved.
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+
+    return send_email(email, "Verify Your Email - E-Shop", html)
+
+
 def send_reset_email(email: str, token: str) -> bool:
     """
     Send password reset email to user.
