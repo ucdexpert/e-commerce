@@ -1,0 +1,17 @@
+{
+  "name": "E-Shop - Your One-Stop Destination for Quality Products",
+  "short_name": "E-Shop",
+  "description": "Shop quality products at amazing prices. Free shipping on orders over $100!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563EB",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

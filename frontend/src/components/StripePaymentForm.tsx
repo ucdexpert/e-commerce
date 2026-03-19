@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { CreditCard, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -16,27 +16,6 @@ export default function StripePaymentForm({ amount, onSuccess, onError }: Stripe
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
-
-  // Debug logs
-  console.log('StripePaymentForm rendered:', { 
-    stripe: !!stripe, 
-    elements: !!elements,
-    amount,
-    hasStripe: !!window.Stripe 
-  })
-
-  // Check if CardElement is visible after mount
-  useEffect(() => {
-    setTimeout(() => {
-      const cardElement = document.querySelector('.StripeElement')
-      console.log('CardElement in DOM:', {
-        found: !!cardElement,
-        hasHeight: cardElement?.clientHeight || 0,
-        hasWidth: cardElement?.clientWidth || 0,
-        isVisible: cardElement ? cardElement.checkVisibility() : false
-      })
-    }, 500)
-  }, [])
 
   const handleStripePayment = async () => {
     // Validation 1: Check if Stripe is loaded
@@ -118,45 +97,33 @@ export default function StripePaymentForm({ amount, onSuccess, onError }: Stripe
   return (
     <div className="space-y-4">
       {/* Card Element */}
-      <div className="border-2 border-blue-500 rounded-xl p-4 bg-white shadow-sm">
-        <div className="text-sm font-medium text-gray-700 mb-2">💳 Card Information:</div>
-        <div className="border border-red-300 bg-yellow-50 p-2 rounded">
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: '18px',
-                  color: '#374151',
-                  '::placeholder': {
-                    color: '#9CA3AF',
-                  },
-                  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-                  lineHeight: '2',
-                  padding: '12px 0',
+      <div className="border border-gray-300 rounded-xl p-4 bg-white shadow-sm">
+        <div className="text-sm font-medium text-gray-700 mb-2">Card Information:</div>
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#374151',
+                '::placeholder': {
+                  color: '#9CA3AF',
                 },
-                invalid: {
-                  color: '#EF4444',
-                  iconColor: '#EF4444',
-                },
+                fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
               },
-              hidePostalCode: true,
-            }}
-            onChange={(e) => {
-              console.log('CardElement changed:', { 
-                complete: e.complete, 
-                error: e.error,
-                brand: e.brand 
-              })
-              setCardComplete(e.complete ?? false);
-              if (e.error) {
-                toast.error(e.error.message);
-              }
-            }}
-          />
-        </div>
-        <div className="text-xs text-gray-500 mt-2">
-          ↑ Card input should appear in the yellow box above
-        </div>
+              invalid: {
+                color: '#EF4444',
+                iconColor: '#EF4444',
+              },
+            },
+            hidePostalCode: true,
+          }}
+          onChange={(e) => {
+            setCardComplete(e.complete ?? false);
+            if (e.error) {
+              toast.error(e.error.message);
+            }
+          }}
+        />
       </div>
 
       {/* Security Notice */}

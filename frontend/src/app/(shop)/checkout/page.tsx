@@ -582,10 +582,6 @@ export default function CheckoutPage() {
               <div className="mt-6 pt-6 border-t">
                 <h3 className="text-lg font-semibold mb-4">Enter Card Details:</h3>
 
-                {/* Debug Log */}
-                {console.log('Stripe payment method selected:', paymentMethod)}
-                {console.log('Stripe promise loaded:', !!stripePromise)}
-
                 {/* Card Input */}
                 <div className="bg-white border border-gray-300 rounded-xl p-4 mb-4">
                   <Elements stripe={stripePromise}>
