@@ -17,28 +17,60 @@ function ProductsContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Filter states
-  const [filters, setFilters] = useState({
-    search: searchParams.get('search') || '',
-    category_id: searchParams.get('category_id') ? Number(searchParams.get('category_id')) : undefined,
-    min_price: searchParams.get('min_price') ? Number(searchParams.get('min_price')) : undefined,
-    max_price: searchParams.get('max_price') ? Number(searchParams.get('max_price')) : undefined,
-    is_featured: searchParams.get('is_featured') === 'true' ? true : undefined,
-    is_on_sale: searchParams.get('is_on_sale') === 'true' ? true : undefined,
-    sort_by: searchParams.get('sort_by') || 'created_at',
-    sort_order: searchParams.get('sort_order') || 'desc',
-    page: searchParams.get('page') ? Number(searchParams.get('page')) : 1,
+  // Read all filters from URL search params
+  const currentPage = parseInt(searchParams.get('page') || '1');
+  const currentCategory = searchParams.get('category_id') || '';
+  const currentSearch = searchParams.get('search') || '';
+  const currentMinPrice = searchParams.get('min_price') || '';
+  const currentMaxPrice = searchParams.get('max_price') || '';
+  const currentIsFeatured = searchParams.get('is_featured') === 'true';
+  const currentIsOnSale = searchParams.get('is_on_sale') === 'true';
+  const currentSortBy = searchParams.get('sort_by') || 'created_at';
+  const currentSortOrder = searchParams.get('sort_order') || 'desc';
+
+  // Update URL when filters change
+  const updateFilters = (newFilters: Record<string, any>) => {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(newFilters).forEach(([key, value]) => {
+      if (value === '' || value === undefined || value === null) {
+        params.delete(key);
+      } else {
+        params.set(key, String(value));
+      }
+    });
+    // Reset to page 1 when filters change (unless page is explicitly set)
+    if (!newFilters.page) {
+      params.set('page', '1');
+    }
+    router.push(`/products?${params.toString()}`, { scroll: false });
+  };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('page', String(page));
+    router.push(`/products?${params.toString()}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Build filters object for API call
+  const filters = {
+    page: currentPage,
     per_page: 12,
-  });
+    search: currentSearch || undefined,
+    category_id: currentCategory || undefined,
+    min_price: currentMinPrice ? Number(currentMinPrice) : undefined,
+    max_price: currentMaxPrice ? Number(currentMaxPrice) : undefined,
+    is_featured: currentIsFeatured || undefined,
+    is_on_sale: currentIsOnSale || undefined,
+    sort_by: currentSortBy,
+    sort_order: currentSortOrder,
+  };
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const params: any = {
-        ...filters,
-        page: filters.page,
-        per_page: filters.per_page,
-      };
+      const params: any = { ...filters };
       // Remove undefined values
       Object.keys(params).forEach((key) => {
         if (params[key] === undefined) delete params[key];
@@ -59,43 +91,11 @@ function ProductsContent() {
     fetchProducts();
   }, [fetchProducts]);
 
-  const updateFilter = (key: string, value: any) => {
-    const newFilters = { ...filters, [key]: value, page: 1 };
-    setFilters(newFilters);
-
-    // Update URL
-    const params = new URLSearchParams();
-    Object.entries(newFilters).forEach(([k, v]) => {
-      if (v !== undefined && v !== '' && k !== 'page' && k !== 'per_page') {
-        params.set(k, String(v));
-      }
-    });
-    router.push(`/products?${params.toString()}`, { scroll: false });
-  };
-
   const clearFilters = () => {
-    const newFilters = {
-      search: '',
-      category_id: undefined,
-      min_price: undefined,
-      max_price: undefined,
-      is_featured: undefined,
-      is_on_sale: undefined,
-      sort_by: 'created_at',
-      sort_order: 'desc',
-      page: 1,
-      per_page: 12,
-    };
-    setFilters(newFilters);
     router.push('/products');
   };
 
-  const handlePageChange = (newPage: number) => {
-    setFilters((prev) => ({ ...prev, page: newPage }));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const hasActiveFilters = filters.search || filters.category_id || filters.min_price || filters.max_price || filters.is_featured || filters.is_on_sale;
+  const hasActiveFilters = currentSearch || currentCategory || currentMinPrice || currentMaxPrice || currentIsFeatured || currentIsOnSale;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -140,8 +140,8 @@ function ProductsContent() {
               <label className="block text-sm font-medium mb-1">Search</label>
               <input
                 type="text"
-                value={filters.search}
-                onChange={(e) => updateFilter('search', e.target.value)}
+                value={currentSearch}
+                onChange={(e) => updateFilters({ search: e.target.value })}
                 placeholder="Search products..."
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
@@ -153,15 +153,15 @@ function ProductsContent() {
               <div className="flex gap-2">
                 <input
                   type="number"
-                  value={filters.min_price || ''}
-                  onChange={(e) => updateFilter('min_price', e.target.value ? Number(e.target.value) : undefined)}
+                  value={currentMinPrice}
+                  onChange={(e) => updateFilters({ min_price: e.target.value })}
                   placeholder="Min"
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <input
                   type="number"
-                  value={filters.max_price || ''}
-                  onChange={(e) => updateFilter('max_price', e.target.value ? Number(e.target.value) : undefined)}
+                  value={currentMaxPrice}
+                  onChange={(e) => updateFilters({ max_price: e.target.value })}
                   placeholder="Max"
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
@@ -173,8 +173,8 @@ function ProductsContent() {
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={filters.is_featured || false}
-                  onChange={(e) => updateFilter('is_featured', e.target.checked || undefined)}
+                  checked={currentIsFeatured}
+                  onChange={(e) => updateFilters({ is_featured: e.target.checked ? 'true' : '' })}
                   className="rounded"
                 />
                 <span className="text-sm">Featured Only</span>
@@ -182,8 +182,8 @@ function ProductsContent() {
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={filters.is_on_sale || false}
-                  onChange={(e) => updateFilter('is_on_sale', e.target.checked || undefined)}
+                  checked={currentIsOnSale}
+                  onChange={(e) => updateFilters({ is_on_sale: e.target.checked ? 'true' : '' })}
                   className="rounded"
                 />
                 <span className="text-sm">On Sale</span>
@@ -194,11 +194,10 @@ function ProductsContent() {
             <div>
               <label className="block text-sm font-medium mb-1">Sort By</label>
               <select
-                value={`${filters.sort_by}-${filters.sort_order}`}
+                value={`${currentSortBy}-${currentSortOrder}`}
                 onChange={(e) => {
                   const [sort_by, sort_order] = e.target.value.split('-');
-                  updateFilter('sort_by', sort_by);
-                  updateFilter('sort_order', sort_order);
+                  updateFilters({ sort_by, sort_order });
                 }}
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               >
@@ -238,18 +237,18 @@ function ProductsContent() {
               {totalPages > 1 && (
                 <div className="mt-8 flex justify-center items-center gap-2">
                   <button
-                    onClick={() => handlePageChange(filters.page - 1)}
-                    disabled={filters.page === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
                     className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                   >
                     Previous
                   </button>
                   <span className="px-4 py-2">
-                    Page {filters.page} of {totalPages}
+                    Page {currentPage} of {totalPages}
                   </span>
                   <button
-                    onClick={() => handlePageChange(filters.page + 1)}
-                    disabled={filters.page === totalPages}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
                     className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                   >
                     Next
