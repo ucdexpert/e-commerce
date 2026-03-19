@@ -21,10 +21,15 @@ import {
   ArrowRight,
   Send,
   UserCircle,
-  BadgeCheck
+  BadgeCheck,
+  ZoomIn,
+  Share2,
+  MessageCircle
 } from 'lucide-react';
 import { formatPrice, cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
 
 // Review interface
 interface Review {
@@ -52,6 +57,10 @@ export default function ProductDetailPage() {
   const [activeImage, setActiveImage] = useState(0);
   const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'reviews'>('description');
   const [isZoomed, setIsZoomed] = useState(false);
+  
+  // Lightbox state for image zoom
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   // Review state
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -64,6 +73,10 @@ export default function ProductDetailPage() {
   const { addToCart } = useCartStore();
   const { addToRecentlyViewed } = useUIStore();
   const [isAdding, setIsAdding] = useState(false);
+
+  // Share functionality
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const shareText = product ? `Check out ${product.name}!` : 'Check out this product!';
 
   useEffect(() => {
     async function fetchProduct() {
@@ -236,12 +249,18 @@ export default function ProductDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 lg:gap-8">
             {/* Left: Image Gallery */}
             <div className="p-6 lg:p-8 bg-[#F8F9FA]">
-              {/* Main Image - responsive height */}
-              <div className="w-full h-64 md:h-96 lg:h-[450px] bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 flex items-center justify-center p-4 mb-4">
+              {/* Main Image - responsive height with zoom */}
+              <div 
+                className="w-full h-64 md:h-96 lg:h-[450px] bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 flex items-center justify-center p-4 mb-4 relative cursor-zoom-in group"
+                onClick={() => {
+                  setLightboxIndex(activeImage);
+                  setLightboxOpen(true);
+                }}
+              >
                 <img
                   src={product.images && product.images[activeImage] ? product.images[activeImage] : '/placeholder.svg'}
                   alt={product.name}
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     if (target.src !== '/placeholder.svg') {
@@ -249,6 +268,12 @@ export default function ProductDetailPage() {
                     }
                   }}
                 />
+                {/* Zoom indicator overlay */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 rounded-2xl pointer-events-none">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg">
+                    <ZoomIn className="w-6 h-6 text-gray-700" />
+                  </div>
+                </div>
               </div>
 
               {/* Discount Badge */}
@@ -302,6 +327,42 @@ export default function ProductDetailPage() {
                 {product.name}
               </h1>
 
+              {/* Share Buttons */}
+              <div className="flex items-center gap-2 mb-4 flex-wrap">
+                <span className="text-sm text-gray-500 font-medium">Share:</span>
+                
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 bg-green-500 text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-green-600 transition shadow-sm"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  WhatsApp
+                </a>
+                
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-blue-700 transition shadow-sm"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  Facebook
+                </a>
+                
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareUrl);
+                    toast.success('Link copied to clipboard!');
+                  }}
+                  className="flex items-center gap-1.5 bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-gray-200 transition"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  Copy Link
+                </button>
+              </div>
+
               {/* Rating Row */}
               <div className="flex items-center gap-3 mb-5">
                 <div className="flex items-center">
@@ -350,30 +411,42 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* Stock Status */}
-              <div className={cn(
-                "mb-6 px-4 py-2.5 rounded-xl inline-flex items-center gap-2 font-medium",
-                isOutOfStock
-                  ? "bg-red-50 text-red-700"
-                  : isLowStock
-                  ? "bg-orange-50 text-orange-700"
-                  : "bg-green-50 text-green-700"
-              )}>
-                {isOutOfStock ? (
-                  <>
-                    <span className="w-2 h-2 bg-red-500 rounded-full" />
-                    Out of Stock
-                  </>
-                ) : isLowStock ? (
-                  <>
-                    <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
-                    Only {product.stock_quantity} left! Order soon!
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    In Stock ({product.stock_quantity} available)
-                  </>
+              {/* Stock Urgency Indicator - IMPROVED */}
+              <div className="mb-6 space-y-2">
+                {product.stock_quantity === 0 && (
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                    <span className="text-red-600 font-medium text-sm">
+                      Out of Stock
+                    </span>
+                  </div>
+                )}
+                
+                {product.stock_quantity > 0 && product.stock_quantity <= 5 && (
+                  <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg px-4 py-2.5">
+                    <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+                    <span className="text-orange-600 font-medium text-sm">
+                      🔥 Only {product.stock_quantity} left in stock!
+                    </span>
+                  </div>
+                )}
+                
+                {product.stock_quantity > 5 && product.stock_quantity <= 20 && (
+                  <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-2.5">
+                    <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                    <span className="text-yellow-600 font-medium text-sm">
+                      ⚡ Only {product.stock_quantity} items remaining
+                    </span>
+                  </div>
+                )}
+                
+                {product.stock_quantity > 20 && (
+                  <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span className="text-green-600 font-medium text-sm">
+                      ✅ In Stock
+                    </span>
+                  </div>
                 )}
               </div>
 
@@ -406,7 +479,7 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
-              {/* Quantity & Action Buttons */}
+              {/* Action Buttons */}
               <div className="mb-6 space-y-4">
                 {/* Quantity Selector */}
                 <div>
@@ -425,7 +498,7 @@ export default function ProductDetailPage() {
                       {quantity}
                     </span>
                     <button
-                      onClick={() => setQuantity(Math.min(product.stock_quantity, quantity + 1))}
+                      onClick={() => setQuantity(Math.min(product.stock_quantity || 999, quantity + 1))}
                       className="p-3 hover:bg-gray-100 transition-colors"
                       disabled={isOutOfStock}
                     >
@@ -463,31 +536,78 @@ export default function ProductDetailPage() {
                     Buy Now
                   </button>
                 </div>
-              </div>
 
-              {/* Trust Badges */}
-              <div className="mt-auto pt-6 border-t border-gray-100">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="flex flex-col items-center text-center gap-2">
-                    <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
-                      <Truck className="w-6 h-6 text-primary" />
+                {/* Delivery Estimator & Trust Badges - IMPROVED */}
+                <div className="border border-gray-200 rounded-xl p-4 space-y-3 mt-4 bg-gray-50">
+                  <div className="flex items-start gap-3 text-sm">
+                    <Truck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-gray-900">
+                        Free Delivery
+                      </span>
+                      <span className="text-gray-500 ml-1">
+                        on orders over $100
+                      </span>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        📦 Estimated delivery: 3-5 business days
+                      </p>
                     </div>
-                    <span className="text-xs font-medium text-gray-600">Free Shipping</span>
                   </div>
-                  <div className="flex flex-col items-center text-center gap-2 border-l border-gray-100">
-                    <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
-                      <RotateCcw className="w-6 h-6 text-success" />
+                  
+                  <div className="flex items-start gap-3 text-sm">
+                    <RotateCcw className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-gray-900">
+                        Easy Returns
+                      </span>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        30-day return policy - No questions asked
+                      </p>
                     </div>
-                    <span className="text-xs font-medium text-gray-600">30-Day Returns</span>
                   </div>
-                  <div className="flex flex-col items-center text-center gap-2 border-l border-gray-100">
-                    <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-secondary" />
+                  
+                  <div className="flex items-start gap-3 text-sm">
+                    <Shield className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-gray-900">
+                        Secure Checkout
+                      </span>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        🔒 SSL encrypted payment - 100% secure
+                      </p>
                     </div>
-                    <span className="text-xs font-medium text-gray-600">1-Year Warranty</span>
                   </div>
                 </div>
               </div>
+
+              {/* Variants */}
+              {product.attributes && Object.keys(product.attributes).length > 0 && (
+                <div className="mb-6 space-y-4">
+                  {Object.entries(product.attributes).map(([key, values]) => (
+                    <div key={key}>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2 capitalize">
+                        {key}
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {(values as any[]).map((value) => (
+                          <button
+                            key={value}
+                            onClick={() => setSelectedVariant((prev) => ({ ...prev, [key]: value }))}
+                            className={cn(
+                              "px-4 py-2.5 border-2 rounded-xl font-medium transition-all",
+                              selectedVariant[key] === value
+                                ? "border-primary bg-primary/5 text-primary"
+                                : "border-gray-200 hover:border-primary/50"
+                            )}
+                          >
+                            {value}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -794,6 +914,46 @@ export default function ProductDetailPage() {
 
         {/* Recently Viewed Products */}
         <RecentlyViewed />
+
+        {/* Sticky Add to Cart Bar - Mobile Only */}
+        {product && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex items-center gap-3 md:hidden z-50 shadow-lg safe-area-bottom">
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 text-sm truncate">
+                {product.name}
+              </p>
+              <p className={cn(
+                "font-bold text-sm mt-0.5",
+                product.is_on_sale ? "text-danger" : "text-primary"
+              )}>
+                {formatPrice(product.price)}
+              </p>
+            </div>
+            <button
+              onClick={handleAddToCart}
+              disabled={product.stock_quantity === 0 || isAdding}
+              className={cn(
+                "px-5 py-2.5 rounded-xl font-semibold text-sm transition flex-shrink-0",
+                product.stock_quantity === 0
+                  ? "bg-gray-300 cursor-not-allowed text-gray-500"
+                  : "bg-primary text-white hover:bg-primary-dark active:scale-95"
+              )}
+            >
+              {isAdding ? 'Adding...' : product.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+            </button>
+          </div>
+        )}
+
+        {/* Image Lightbox */}
+        <Lightbox
+          open={lightboxOpen}
+          close={() => setLightboxOpen(false)}
+          index={lightboxIndex}
+          slides={(product?.images || []).map(img => ({ src: img }))}
+          on={{
+            view: ({ index }) => setLightboxIndex(index || 0),
+          }}
+        />
       </div>
     </div>
   );

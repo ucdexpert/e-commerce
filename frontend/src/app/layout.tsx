@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { SessionProvider } from 'next-auth/react';
 import { useAuthStore, useCartStore, useWishlistStore } from '@/store';
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
@@ -26,8 +27,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen">
-        {children}
-        <Toaster position="top-right" gutter={8} />
+        <SessionProvider>
+          {children}
+          <Toaster position="top-right" gutter={8} />
+        </SessionProvider>
       </body>
     </html>
   );

@@ -5,9 +5,7 @@ import type { NextRequest } from 'next/server';
 const protectedRoutes = [
   '/profile',
   '/orders',
-  '/checkout',
   '/wishlist',
-  '/cart',
   '/admin',
 ];
 
@@ -21,25 +19,41 @@ const adminRoutes = [
   '/admin/coupons',
 ];
 
+// Routes accessible without auth (including guest checkout)
+const publicRoutes = [
+  '/checkout',
+  '/cart',
+];
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
+
   // Get token from cookie
   const token = request.cookies.get('access_token')?.value;
-  
+
   // Get user role from cookie (stored during login)
   const userRole = request.cookies.get('user_role')?.value;
-  
+
   // Check if route requires authentication
-  const isProtectedRoute = protectedRoutes.some(route => 
+  const isProtectedRoute = protectedRoutes.some(route =>
     pathname.startsWith(route)
   );
-  
+
+  // Check if route is public (accessible without auth)
+  const isPublicRoute = publicRoutes.some(route =>
+    pathname.startsWith(route)
+  );
+
   // Check if route requires admin access
-  const isAdminRoute = adminRoutes.some(route => 
+  const isAdminRoute = adminRoutes.some(route =>
     pathname.startsWith(route)
   );
-  
+
+  // Allow public routes (checkout, cart) without authentication
+  if (isPublicRoute) {
+    return NextResponse.next();
+  }
+
   // Redirect to login if no token and trying to access protected route
   if (isProtectedRoute && !token) {
     const loginUrl = new URL('/login', request.url);

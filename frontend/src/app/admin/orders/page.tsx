@@ -69,6 +69,7 @@ const statusTabs = [
   { value: 'shipped', label: 'Shipped', color: 'purple' },
   { value: 'delivered', label: 'Delivered', color: 'green' },
   { value: 'cancelled', label: 'Cancelled', color: 'red' },
+  { value: 'returns', label: 'Returns', color: 'orange', icon: '🔄' },
 ];
 
 export default function AdminOrders() {
@@ -98,7 +99,12 @@ export default function AdminOrders() {
       };
 
       if (statusFilter !== 'all') {
-        params.status_filter = statusFilter;
+        if (statusFilter === 'returns') {
+          // For returns, fetch orders with return_requested status
+          params.has_return = true;
+        } else {
+          params.status_filter = statusFilter;
+        }
       }
 
       if (search) {
@@ -207,12 +213,13 @@ export default function AdminOrders() {
             key={tab.value}
             onClick={() => setStatusFilter(tab.value)}
             className={cn(
-              'px-4 py-2 rounded-lg whitespace-nowrap font-medium transition-colors',
+              'px-4 py-2 rounded-lg whitespace-nowrap font-medium transition-colors flex items-center gap-1.5',
               statusFilter === tab.value
                 ? `bg-${tab.color}-500 text-white`
                 : 'bg-white border hover:bg-gray-50'
             )}
           >
+            {tab.icon && <span>{tab.icon}</span>}
             {tab.label}
           </button>
         ))}

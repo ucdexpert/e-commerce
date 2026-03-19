@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import CookieConsent from '@/components/CookieConsent';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import AuthSync from '@/components/AuthSync';
 
 export const metadata: Metadata = {
   title: {
@@ -59,6 +60,9 @@ export default function ShopLayout({
 }) {
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Auth Sync Component - Syncs NextAuth with Zustand */}
+      <AuthSync />
+      
       {/* Google Analytics - Only load if NEXT_PUBLIC_GA_ID is set */}
       {process.env.NEXT_PUBLIC_GA_ID && (
         <>
@@ -95,7 +99,7 @@ export default function ShopLayout({
       {/* Tawk.to Live Chat */}
       <Script
         id="tawk-to"
-        src="https://embed.tawk.to/69b96d53bb328c1c365c93e0/1jju563rc"
+        src="https://embed.tawk.to/69ba7efbefc5d11c36928e8d/1jk0802q7"
         strategy="lazyOnload"
       />
     </div>

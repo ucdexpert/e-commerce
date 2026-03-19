@@ -8,26 +8,26 @@ export default function Footer() {
     <footer className="bg-gray-900 text-gray-300">
       {/* Main Footer */}
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
           {/* Company Info */}
           <div>
             <Link href="/" className="inline-flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary 
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary
                               flex items-center justify-center text-white font-bold text-xl">
                 E
               </div>
               <span className="text-2xl font-bold text-white">E-Shop</span>
             </Link>
             <p className="text-gray-400 mb-6 leading-relaxed">
-              Your one-stop destination for quality products at amazing prices. 
+              Your one-stop destination for quality products at amazing prices.
               We offer the best selection with unbeatable customer service.
             </p>
-            
+
             {/* Social Media */}
             <div className="flex gap-3">
-              <SocialLink href="#" icon={<Facebook className="w-5 h-5" />} label="Facebook" />
-              <SocialLink href="#" icon={<Twitter className="w-5 h-5" />} label="Twitter" />
-              <SocialLink href="#" icon={<Instagram className="w-5 h-5" />} label="Instagram" />
+              <SocialLink href="https://facebook.com" icon={<Facebook className="w-5 h-5" />} label="Facebook" />
+              <SocialLink href="https://twitter.com" icon={<Twitter className="w-5 h-5" />} label="Twitter" />
+              <SocialLink href="https://instagram.com" icon={<Instagram className="w-5 h-5" />} label="Instagram" />
             </div>
           </div>
 
@@ -70,37 +70,37 @@ export default function Footer() {
             </h4>
             <ul className="space-y-4">
               <li className="flex items-start gap-3 group">
-                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center 
+                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center
                               group-hover:bg-primary/20 transition-colors">
                   <Mail className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-0.5">Email</p>
-                  <a href="mailto:support@eshop.com" className="text-sm hover:text-primary transition-colors">
-                    support@eshop.com
+                  <a href="mailto:hassankhilji26@gmail.com" className="text-sm hover:text-primary transition-colors">
+                    hassankhilji26@gmail.com
                   </a>
                 </div>
               </li>
               <li className="flex items-start gap-3 group">
-                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center 
+                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center
                               group-hover:bg-primary/20 transition-colors">
                   <Phone className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-0.5">Phone</p>
-                  <a href="tel:+15551234567" className="text-sm hover:text-primary transition-colors">
-                    +1 (555) 123-4567
+                  <a href="tel:+923001234567" className="text-sm hover:text-primary transition-colors">
+                    +92 300 1234567
                   </a>
                 </div>
               </li>
               <li className="flex items-start gap-3 group">
-                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center 
+                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center
                               group-hover:bg-primary/20 transition-colors">
                   <MapPin className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-0.5">Address</p>
-                  <span className="text-sm">123 Commerce Street<br />New York, NY 10001</span>
+                  <span className="text-sm">Karachi, Pakistan</span>
                 </div>
               </li>
             </ul>

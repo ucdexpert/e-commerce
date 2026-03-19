@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Header, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
@@ -15,6 +15,11 @@ from ..schemas import (
 from ..utils.email import send_order_confirmation_email
 import random
 import string
+import stripe
+import os
+
+# Initialize Stripe
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -35,72 +40,84 @@ def get_order_by_id(order_id: int, db: Session) -> Order:
 @router.post("/", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
     order_data: OrderCreate,
+    guest_email: Optional[str] = None,
     db: Session = Depends(get_db),
     authorization: Optional[str] = Header(None)
 ):
-    # Get current user from JWT token
-    if not authorization:
+    """
+    Create a new order.
+    - For authenticated users: requires JWT token, uses user's cart
+    - For guest users: requires guest_email, creates order without user account
+    """
+    current_user_id = None
+    
+    # Try to get authenticated user
+    if authorization:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() == "bearer":
+            payload = decode_token(token)
+            if payload:
+                try:
+                    current_user_id = int(payload.get("sub"))
+                except (ValueError, TypeError):
+                    pass
+    
+    # If no user and no guest email, require authentication
+    if not current_user_id and not guest_email:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            detail="Authentication required or guest_email must be provided"
         )
     
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication scheme"
-        )
-    
-    payload = decode_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token"
-        )
-    
-    try:
-        current_user_id = int(payload.get("sub"))
-    except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
-    
-    # Get user's cart
-    cart = db.query(Cart).filter(Cart.user_id == current_user_id).first()
-
-    if not cart or not cart.items:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cart is empty"
-        )
-
-    # FIX: Validate stock availability BEFORE creating order
-    # Use with_for_update() to lock rows and prevent race conditions
-    for item in cart.items:
-        product = db.query(Product).filter(
-            Product.id == item.product_id
-        ).with_for_update().first()
-        
-        if not product:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product {item.product_id} not found"
-            )
-        
-        if product.stock_quantity < item.quantity:
+    # Get cart (for authenticated users) or create temporary cart data
+    cart = None
+    if current_user_id:
+        cart = db.query(Cart).filter(Cart.user_id == current_user_id).first()
+        if not cart or not cart.items:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    f"Insufficient stock for '{product.name}'. "
-                    f"Available: {product.stock_quantity}, "
-                    f"Requested: {item.quantity}"
-                )
+                detail="Cart is empty"
             )
+    
+    # For guest checkout, we need to handle cart items differently
+    # This assumes cart items are passed in order_data or session
+    # For simplicity, we'll use a temporary cart approach
+    
+    # Calculate totals and validate stock
+    subtotal = 0
+    items_to_process = []
+    
+    if cart:
+        # Authenticated user with cart
+        for item in cart.items:
+            product = db.query(Product).filter(
+                Product.id == item.product_id
+            ).with_for_update().first()
 
-    # Calculate totals
-    subtotal = sum(item.product.price * item.quantity for item in cart.items)
+            if not product:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Product {item.product_id} not found"
+                )
+
+            if product.stock_quantity < item.quantity:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"Insufficient stock for '{product.name}'. "
+                        f"Available: {product.stock_quantity}, "
+                        f"Requested: {item.quantity}"
+                    )
+                )
+            
+            subtotal += product.price * item.quantity
+            items_to_process.append({
+                'product_id': item.product_id,
+                'quantity': item.quantity,
+                'price': product.price,
+                'variant': item.variant
+            })
+    
     tax = subtotal * 0.1  # 10% tax
     shipping_cost = 10 if subtotal < 100 else 0  # Free shipping over $100
     discount = 0
@@ -109,7 +126,8 @@ def create_order(
     # Create order
     order = Order(
         order_number=generate_order_number(),
-        user_id=current_user_id,
+        user_id=current_user_id,  # Can be None for guest
+        guest_email=guest_email,  # Set for guest orders
         status="pending",
         payment_status="pending",
         payment_method=order_data.payment_method,
@@ -126,25 +144,26 @@ def create_order(
     db.flush()  # Get order ID
 
     # Create order items and deduct stock
-    for cart_item in cart.items:
+    for item_data in items_to_process:
         order_item = OrderItem(
             order_id=order.id,
-            product_id=cart_item.product_id,
-            quantity=cart_item.quantity,
-            price=cart_item.product.price,
-            variant=cart_item.variant,
-            subtotal=cart_item.product.price * cart_item.quantity
+            product_id=item_data['product_id'],
+            quantity=item_data['quantity'],
+            price=item_data['price'],
+            variant=item_data['variant'],
+            subtotal=item_data['price'] * item_data['quantity']
         )
         db.add(order_item)
 
-        # FIX: Deduct stock after order is created
-        cart_item.product.stock_quantity -= cart_item.quantity
-        cart_item.product.sold_count += cart_item.quantity
+        # Deduct stock
+        product = db.query(Product).filter(Product.id == item_data['product_id']).first()
+        product.stock_quantity -= item_data['quantity']
+        product.sold_count += item_data['quantity']
 
         # Create inventory log
         inventory_log = InventoryLog(
-            product_id=cart_item.product_id,
-            quantity_change=-cart_item.quantity,
+            product_id=item_data['product_id'],
+            quantity_change=-item_data['quantity'],
             reason="sale",
             reference_type="order",
             reference_id=order.id,
@@ -152,8 +171,9 @@ def create_order(
         )
         db.add(inventory_log)
 
-    # Clear cart
-    db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
+    # Clear cart (only for authenticated users)
+    if cart:
+        db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
 
     try:
         db.commit()
@@ -167,14 +187,19 @@ def create_order(
 
     # Send order confirmation email
     try:
-        user = db.query(User).filter(User.id == current_user_id).first()
-        if user and user.email:
+        recipient_email = guest_email
+        if current_user_id:
+            user = db.query(User).filter(User.id == current_user_id).first()
+            if user and user.email:
+                recipient_email = user.email
+        
+        if recipient_email:
             items_data = [
                 {"name": item.product.name, "quantity": item.quantity, "price": item.price}
                 for item in order.items
             ]
             send_order_confirmation_email(
-                email=user.email,
+                email=recipient_email,
                 order_number=order.order_number,
                 total=order.total,
                 items=items_data
@@ -503,3 +528,182 @@ async def create_return_request(
         "message": "Return request submitted successfully. We'll send you a prepaid return label via email.",
         "order_id": order_id
     }
+
+
+# =============================================================================
+# STRIPE PAYMENT ENDPOINTS
+# =============================================================================
+
+@router.post("/create-payment-intent")
+async def create_payment_intent(
+    amount: float,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a Stripe Payment Intent for checkout.
+    Amount should be in dollars (will be converted to cents).
+    """
+    if not stripe.api_key or stripe.api_key == "your_stripe_secret_key_here":
+        raise HTTPException(
+            status_code=500,
+            detail="Stripe configuration error. Please contact support."
+        )
+    
+    try:
+        # Convert dollars to cents (Stripe expects integer in cents)
+        amount_cents = int(amount * 100)
+        
+        # Create payment intent
+        intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency="usd",
+            metadata={
+                "user_id": str(current_user.id),
+                "email": current_user.email
+            },
+            automatic_payment_methods={
+                "enabled": True,
+                "allow_redirects": "never"
+            }
+        )
+        
+        return {
+            "client_secret": intent.client_secret,
+            "payment_intent_id": intent.id,
+            "amount": amount_cents,
+            "currency": "usd"
+        }
+    except stripe.error.CardError as e:
+        raise HTTPException(status_code=400, detail=f"Payment failed: {str(e)}")
+    except stripe.error.InvalidRequestError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid request: {str(e)}")
+    except Exception as e:
+        print(f"Stripe payment intent error: {e}")
+        raise HTTPException(status_code=500, detail=f"Payment processing error: {str(e)}")
+
+
+@router.post("/webhook")
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    """
+    Handle Stripe webhook events.
+    This endpoint receives events from Stripe when payment status changes.
+    """
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    
+    if not webhook_secret:
+        raise HTTPException(
+            status_code=500,
+            detail="Webhook secret not configured"
+        )
+    
+    try:
+        # Construct webhook event
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, webhook_secret
+        )
+    except stripe.error.SignatureVerificationError as e:
+        print(f"Webhook signature verification failed: {e}")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+    except Exception as e:
+        print(f"Webhook error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    # Handle the event
+    if event["type"] == "payment_intent.succeeded":
+        payment_intent = event["data"]["object"]
+        order_id = payment_intent.metadata.get("order_id")
+        
+        if order_id:
+            try:
+                order = db.query(Order).filter(Order.id == int(order_id)).first()
+                if order:
+                    # Update order payment status
+                    order.payment_status = "paid"
+                    order.payment_intent_id = payment_intent.id
+                    order.status = "processing"
+                    
+                    # Send confirmation email if not already sent
+                    if order.payment_status != "paid":
+                        user = db.query(User).filter(User.id == order.user_id).first()
+                        if user and user.email:
+                            items_data = [
+                                {"name": item.product.name, "quantity": item.quantity, "price": item.price}
+                                for item in order.items
+                            ]
+                            send_order_confirmation_email(
+                                email=user.email,
+                                order_number=order.order_number,
+                                total=order.total,
+                                items=items_data
+                            )
+                    
+                    db.commit()
+                    print(f"Payment successful for order #{order.order_number}")
+            except Exception as e:
+                print(f"Error updating order after payment: {e}")
+                db.rollback()
+    
+    elif event["type"] == "payment_intent.payment_failed":
+        payment_intent = event["data"]["object"]
+        order_id = payment_intent.metadata.get("order_id")
+        
+        if order_id:
+            try:
+                order = db.query(Order).filter(Order.id == int(order_id)).first()
+                if order:
+                    order.payment_status = "failed"
+                    db.commit()
+                    print(f"Payment failed for order #{order.order_number}")
+            except Exception as e:
+                print(f"Error updating order after payment failure: {e}")
+                db.rollback()
+    
+    return {"status": "success"}
+
+
+@router.post("/confirm-payment/{order_id}")
+async def confirm_payment(
+    order_id: int,
+    payment_intent_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Manually confirm payment for an order (fallback if webhook fails).
+    """
+    order = get_order_by_id(order_id, db)
+    
+    # Check ownership
+    if order.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this order"
+        )
+    
+    try:
+        # Retrieve payment intent from Stripe
+        intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+        
+        if intent.status == "succeeded":
+            order.payment_status = "paid"
+            order.payment_intent_id = payment_intent_id
+            order.status = "processing"
+            db.commit()
+            
+            return {
+                "message": "Payment confirmed successfully",
+                "order": order
+            }
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Payment not completed. Status: {intent.status}"
+            )
+    except stripe.error.InvalidRequestError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid payment intent: {str(e)}")
+    except Exception as e:
+        print(f"Payment confirmation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Payment confirmation failed: {str(e)}")

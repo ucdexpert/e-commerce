@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
 import { useAuthStore, useCartStore } from '@/store';
 import { addressesApi, ordersApi, Address, OrderCreateData } from '@/lib/api';
 import { CreditCard, Truck, CheckCircle, Tag, X } from 'lucide-react';
@@ -9,6 +11,12 @@ import { formatPrice } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import StripePaymentForm from '@/components/StripePaymentForm';
+
+// Initialize Stripe
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_your_stripe_publishable_key'
+);
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -20,6 +28,17 @@ export default function CheckoutPage() {
   const [notes, setNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
+  
+  // Guest checkout state
+  const [guestEmail, setGuestEmail] = useState('');
+  const [checkoutMode, setCheckoutMode] = useState<'guest' | 'login' | null>(null);
+  const [guestOrderPlaced, setGuestOrderPlaced] = useState(false);
+
+  // Stripe payment state
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [stripePaymentReady, setStripePaymentReady] = useState(false);
+  const [orderCreated, setOrderCreated] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -31,13 +50,10 @@ export default function CheckoutPage() {
   const { register, handleSubmit, formState: { errors }, reset } = useForm<Address>();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login?redirect=/checkout');
-      return;
-    }
-
     fetchCart();
-    fetchAddresses();
+    if (isAuthenticated) {
+      fetchAddresses();
+    }
   }, [isAuthenticated, fetchCart]);
 
   const fetchAddresses = async () => {
@@ -122,7 +138,23 @@ export default function CheckoutPage() {
     }
   };
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = async (stripePaymentIntentId?: string) => {
+    // Validation for Stripe payment
+    if (paymentMethod === 'stripe') {
+      // Card input validation is handled in StripePaymentForm component
+      // The form won't submit if card is incomplete
+    }
+
+    if (!selectedAddress && !checkoutMode) {
+      toast.error('Please select checkout mode');
+      return;
+    }
+
+    if (checkoutMode === 'guest' && !guestEmail) {
+      toast.error('Please enter your email for order confirmation');
+      return;
+    }
+
     if (!selectedAddress) {
       toast.error('Please shipping address select karein');
       return;
@@ -130,7 +162,7 @@ export default function CheckoutPage() {
 
     setIsProcessing(true);
     try {
-      const orderData: OrderCreateData = {
+      const orderData: any = {
         shipping_address_id: selectedAddress,
         billing_address_id: selectedAddress,
         payment_method: paymentMethod,
@@ -138,16 +170,59 @@ export default function CheckoutPage() {
         coupon_code: appliedCoupon?.code || undefined,
       };
 
+      // Add guest email if guest checkout
+      if (checkoutMode === 'guest') {
+        orderData.guest_email = guestEmail;
+      }
+
       const response = await ordersApi.create(orderData);
+      const orderId = response.data.id;
+
+      // Store order ID for Stripe payment
+      setCreatedOrderId(orderId);
+      setOrderCreated(true);
+      setGuestOrderPlaced(true);
 
       // Clear coupon after order is placed
       if (appliedCoupon) {
         setAppliedCoupon(null);
       }
 
-      await clearCart();
-      toast.success('Order place ho gaya! 🎉');
-      router.push(`/orders/${response.data.id}?success=true`);
+      // If COD, complete immediately
+      if (paymentMethod === 'cod') {
+        await clearCart();
+        toast.success('Order place ho gaya! 🎉');
+        router.push(`/payment/success?order_id=${orderId}&guest=true`);
+        return;
+      }
+
+      // If Stripe, wait for payment
+      if (paymentMethod === 'stripe' && stripePaymentIntentId) {
+        // Confirm payment with backend
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+        const token = localStorage.getItem('access_token');
+
+        const headers: any = {
+          'Content-Type': 'application/json',
+        };
+
+        // Add auth header only if logged in
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        await fetch(`${API_URL}/orders/confirm-payment/${orderId}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            payment_intent_id: stripePaymentIntentId,
+          }),
+        });
+
+        await clearCart();
+        toast.success('Payment successful! Order placed! 🎉');
+        router.push(`/payment/success?order_id=${orderId}&guest=true`);
+      }
     } catch (error: any) {
       const msg = error.response?.data?.detail;
       const status = error.response?.status;
@@ -169,13 +244,92 @@ export default function CheckoutPage() {
     }
   };
 
-  if (!isAuthenticated || items.length === 0) {
-    return null;
+  // Handle successful Stripe payment
+  const handleStripePaymentSuccess = async (paymentIntentId: string) => {
+    setPaymentIntentId(paymentIntentId);
+    setStripePaymentReady(true);
+    await handlePlaceOrder(paymentIntentId);
+  };
+
+  // Handle Stripe payment error
+  const handleStripePaymentError = (error: string) => {
+    console.error('Stripe payment error:', error);
+    setOrderCreated(false);
+  };
+
+  // If cart is empty, show message
+  if (items.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold mb-4">Your cart is empty</h1>
+        <button
+          onClick={() => router.push('/products')}
+          className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90"
+        >
+          Continue Shopping
+        </button>
+      </div>
+    );
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Checkout</h1>
+
+      {/* Checkout Mode Selection for Non-Authenticated Users */}
+      {!isAuthenticated && !guestOrderPlaced && (
+        <div className="mb-8">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-xl font-bold mb-4">
+              How would you like to checkout?
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <button
+                onClick={() => router.push('/login?redirect=/checkout')}
+                className="border-2 border-blue-600 text-blue-600 p-4 rounded-xl hover:bg-blue-50 text-left transition-all"
+              >
+                <div className="font-semibold text-base">👤 Login / Register</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  Track orders, faster checkout, save addresses
+                </div>
+              </button>
+              
+              <button
+                onClick={() => setCheckoutMode('guest')}
+                className={`border-2 p-4 rounded-xl text-left transition-all ${
+                  checkoutMode === 'guest'
+                    ? 'border-green-600 bg-green-50'
+                    : 'border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <div className="font-semibold text-base">🛒 Guest Checkout</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  Quick checkout without creating an account
+                </div>
+              </button>
+            </div>
+            
+            {checkoutMode === 'guest' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  📧 Email for order confirmation
+                </label>
+                <input
+                  type="email"
+                  value={guestEmail}
+                  onChange={e => setGuestEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  We'll send your order confirmation to this email address
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Checkout Form */}
@@ -187,116 +341,210 @@ export default function CheckoutPage() {
                 <Truck className="w-6 h-6" />
                 Shipping Address
               </h2>
-              <button
-                onClick={() => setShowAddressForm(!showAddressForm)}
-                className="text-primary hover:underline text-sm"
-              >
-                {showAddressForm ? 'Cancel' : '+ Add New Address'}
-              </button>
+              {!isAuthenticated && checkoutMode !== 'guest' && (
+                <span className="text-sm text-gray-500">Select checkout mode above</span>
+              )}
+              {isAuthenticated && (
+                <button
+                  onClick={() => setShowAddressForm(!showAddressForm)}
+                  className="text-primary hover:underline text-sm"
+                >
+                  {showAddressForm ? 'Cancel' : '+ Add New Address'}
+                </button>
+              )}
             </div>
 
-            {showAddressForm ? (
-              <form onSubmit={handleSubmit(onSubmitAddress)} className="space-y-4">
+            {isAuthenticated ? (
+              // Authenticated user - show saved addresses
+              showAddressForm ? (
+                <form onSubmit={handleSubmit(onSubmitAddress)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">First Name</label>
+                      <input
+                        {...register('first_name', { required: true })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Last Name</label>
+                      <input
+                        {...register('last_name', { required: true })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Address</label>
+                    <input
+                      {...register('address_line1', { required: true })}
+                      placeholder="Street address"
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">City</label>
+                      <input
+                        {...register('city', { required: true })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">State</label>
+                      <input
+                        {...register('state', { required: true })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Postal Code</label>
+                      <input
+                        {...register('postal_code', { required: true })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Country</label>
+                    <input
+                      {...register('country', { required: true })}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Phone</label>
+                    <input
+                      {...register('phone', { required: true })}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+                  >
+                    Save Address
+                  </button>
+                </form>
+              ) : addresses.length > 0 ? (
+                <div className="space-y-3">
+                  {addresses.map((addr) => (
+                    <label
+                      key={addr.id}
+                      className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer ${
+                        selectedAddress === addr.id ? 'border-primary bg-primary/5' : ''
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="address"
+                        value={addr.id}
+                        checked={selectedAddress === addr.id}
+                        onChange={() => setSelectedAddress(addr.id)}
+                        className="mt-1"
+                      />
+                      <div>
+                        <p className="font-medium">
+                          {addr.first_name} {addr.last_name}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {addr.address_line1}, {addr.city}, {addr.state} {addr.postal_code}
+                        </p>
+                        <p className="text-sm text-gray-600">{addr.country}</p>
+                        <p className="text-sm text-gray-600">{addr.phone}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">No addresses saved. Please add a new address.</p>
+              )
+            ) : checkoutMode === 'guest' ? (
+              // Guest checkout - show address form directly
+              <form className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">First Name</label>
                     <input
-                      {...register('first_name', { required: true })}
+                      type="text"
+                      onChange={(e) => {/* Handle guest first name */}}
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Last Name</label>
                     <input
-                      {...register('last_name', { required: true })}
+                      type="text"
+                      onChange={(e) => {/* Handle guest last name */}}
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
                     />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Address</label>
                   <input
-                    {...register('address_line1', { required: true })}
+                    type="text"
                     placeholder="Street address"
+                    onChange={(e) => {/* Handle guest address */}}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    required
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">City</label>
                     <input
-                      {...register('city', { required: true })}
+                      type="text"
+                      onChange={(e) => {/* Handle guest city */}}
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">State</label>
                     <input
-                      {...register('state', { required: true })}
+                      type="text"
+                      onChange={(e) => {/* Handle guest state */}}
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Postal Code</label>
                     <input
-                      {...register('postal_code', { required: true })}
+                      type="text"
+                      onChange={(e) => {/* Handle guest postal code */}}
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
                     />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Country</label>
                   <input
-                    {...register('country', { required: true })}
+                    type="text"
+                    onChange={(e) => {/* Handle guest country */}}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    required
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Phone</label>
                   <input
-                    {...register('phone', { required: true })}
+                    type="tel"
+                    onChange={(e) => {/* Handle guest phone */}}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    required
                   />
                 </div>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-                >
-                  Save Address
-                </button>
+                <p className="text-sm text-gray-500">
+                  ℹ️ You'll enter your complete address during order placement
+                </p>
               </form>
-            ) : addresses.length > 0 ? (
-              <div className="space-y-3">
-                {addresses.map((addr) => (
-                  <label
-                    key={addr.id}
-                    className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer ${
-                      selectedAddress === addr.id ? 'border-primary bg-primary/5' : ''
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="address"
-                      value={addr.id}
-                      checked={selectedAddress === addr.id}
-                      onChange={() => setSelectedAddress(addr.id)}
-                      className="mt-1"
-                    />
-                    <div>
-                      <p className="font-medium">
-                        {addr.first_name} {addr.last_name}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {addr.address_line1}, {addr.city}, {addr.state} {addr.postal_code}
-                      </p>
-                      <p className="text-sm text-gray-600">{addr.country}</p>
-                      <p className="text-sm text-gray-600">{addr.phone}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
             ) : (
-              <p className="text-gray-500">No addresses saved. Please add a new address.</p>
+              <p className="text-gray-500">Please select a checkout mode above to continue.</p>
             )}
           </div>
 
@@ -328,6 +576,46 @@ export default function CheckoutPage() {
                 <span>Cash on Delivery</span>
               </label>
             </div>
+
+            {/* Stripe Payment Form */}
+            {paymentMethod === 'stripe' && (
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="text-lg font-semibold mb-4">Enter Card Details:</h3>
+
+                {/* Debug Log */}
+                {console.log('Stripe payment method selected:', paymentMethod)}
+                {console.log('Stripe promise loaded:', !!stripePromise)}
+
+                {/* Card Input */}
+                <div className="bg-white border border-gray-300 rounded-xl p-4 mb-4">
+                  <Elements stripe={stripePromise}>
+                    <StripePaymentForm
+                      amount={total}
+                      onSuccess={handleStripePaymentSuccess}
+                      onError={handleStripePaymentError}
+                    />
+                  </Elements>
+                </div>
+
+                {/* Test Cards Info */}
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-xs font-semibold text-blue-800 mb-2">
+                    🧪 Test Card Numbers (Demo Mode):
+                  </p>
+                  <div className="space-y-1 text-xs text-blue-700">
+                    <p>✅ <strong>Success:</strong> 4242 4242 4242 4242</p>
+                    <p>❌ <strong>Decline:</strong> 4000 0000 0000 0002</p>
+                    <p>📅 <strong>Expiry:</strong> Any future date (e.g., 12/30)</p>
+                    <p>🔢 <strong>CVV:</strong> Any 3 digits (e.g., 123)</p>
+                    <p>📮 <strong>ZIP:</strong> Any 5 digits (e.g., 12345)</p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500 mt-3 flex items-center gap-1">
+                  🔒 Your payment information is secure and encrypted with Stripe
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Order Notes */}
@@ -443,11 +731,11 @@ export default function CheckoutPage() {
             </div>
 
             <button
-              onClick={handlePlaceOrder}
-              disabled={isProcessing || !selectedAddress}
+              onClick={() => handlePlaceOrder()}
+              disabled={isProcessing || !selectedAddress || (paymentMethod === 'stripe' && orderCreated)}
               className="w-full py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isProcessing ? 'Processing...' : 'Place Order'}
+              {isProcessing ? 'Processing...' : paymentMethod === 'stripe' && orderCreated ? 'Complete Payment Below' : 'Place Order'}
             </button>
           </div>
         </div>

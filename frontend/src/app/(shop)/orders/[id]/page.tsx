@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, FormEvent } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, Link } from 'next/navigation';
 import { ordersApi, Order } from '@/lib/api';
 import { ChevronLeft, Package, CreditCard, Truck, Calendar, Download, FileText, RotateCcw, X } from 'lucide-react';
 import { formatPrice, formatDate } from '@/lib/utils';
@@ -176,16 +176,16 @@ export default function OrderDetailPage() {
             <Download className="w-4 h-4" />
             Download Invoice PDF
           </button>
-          
+
           {isReturnEligible() && (
-            <button
-              onClick={handleRequestReturn}
+            <Link
+              href={`/orders/${order.id}/return`}
               className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl font-medium
                        hover:bg-amber-600 transition-all active:scale-95 shadow-md shadow-amber-500/30"
             >
               <RotateCcw className="w-4 h-4" />
               Request Return
-            </button>
+            </Link>
           )}
         </div>
       </div>

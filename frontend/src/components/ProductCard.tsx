@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { ShoppingCart, Heart, Star } from 'lucide-react';
 import { Product } from '@/lib/api';
@@ -99,11 +100,15 @@ export default function ProductCard({ product }: ProductCardProps) {
         {/* Image Container - Fixed height max 192px */}
         <div className="relative h-48 overflow-hidden bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600">
           {hasImage ? (
-            <img
+            <Image
               src={product.images[0]}
               alt={product.name}
-              className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
+              fill
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+              className="object-cover object-center group-hover:scale-110 transition-transform duration-500"
               onError={() => setImageError(true)}
+              loading="lazy"
+              priority={false}
             />
           ) : (
             /* Beautiful Placeholder */

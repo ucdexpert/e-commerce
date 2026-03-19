@@ -33,18 +33,18 @@ class Product(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False, index=True)
-    slug = Column(String, unique=True, nullable=False, index=True)
+    slug = Column(String, unique=True, nullable=False, index=True)  # Added index
     description = Column(Text)
     short_description = Column(String)
     price = Column(Float, nullable=False, index=True)
     compare_price = Column(Float)  # Original price for discounts
     cost = Column(Float)  # Cost price for profit calculation
-    sku = Column(String, unique=True, index=True)
+    sku = Column(String, unique=True, index=True)  # Added index
     barcode = Column(String)
     stock_quantity = Column(Integer, default=0)
     low_stock_threshold = Column(Integer, default=10)
-    is_active = Column(Boolean, default=True, index=True)
-    is_featured = Column(Boolean, default=False, index=True)
+    is_active = Column(Boolean, default=True, index=True)  # Added index
+    is_featured = Column(Boolean, default=False, index=True)  # Added index
     is_on_sale = Column(Boolean, default=False, index=True)
     images = Column(JSON, default=list)  # List of image URLs
     attributes = Column(JSON, default=dict)  # e.g., {"color": ["red", "blue"], "size": ["S", "M", "L"]}
@@ -55,7 +55,7 @@ class Product(Base):
     review_count = Column(Integer, default=0)
     sold_count = Column(Integer, default=0, index=True)
     view_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)  # Added index
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships

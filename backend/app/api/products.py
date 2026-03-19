@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_
 from typing import List, Optional
 from ..core.database import get_db
@@ -92,8 +92,11 @@ def get_products(
     sort_order: str = Query("desc", regex="^(asc|desc)$"),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Product).filter(Product.is_active == True)
-    
+    # Use eager loading to prevent N+1 queries
+    query = db.query(Product).options(
+        joinedload(Product.categories)
+    ).filter(Product.is_active == True)
+
     # Search
     if search:
         search_filter = or_(
@@ -190,17 +193,20 @@ def get_product_by_slug(
     slug: str,
     db: Session = Depends(get_db)
 ):
-    product = db.query(Product).filter(Product.slug == slug).first()
+    # Use eager loading for related data
+    product = db.query(Product).options(
+        joinedload(Product.categories)
+    ).filter(Product.slug == slug).first()
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found"
         )
-    
+
     # Increment view count
     product.view_count += 1
     db.commit()
-    
+
     return product
 
 @router.put("/{product_id}", response_model=ProductResponse)
@@ -267,8 +273,10 @@ def get_related_products(
             total_pages=0
         )
     
-    # Find related products in same categories
-    related = db.query(Product).filter(
+    # Find related products in same categories with eager loading
+    related = db.query(Product).options(
+        joinedload(Product.categories)
+    ).filter(
         Product.id != product_id,
         Product.is_active == True,
         Product.categories.any(Category.id.in_(category_ids))

@@ -17,6 +17,7 @@ from ..schemas import (
     UserResponse,
     LoginRequest,
     Token,
+    TokenWithUser,
     TokenRefresh,
     UserUpdate,
 )
@@ -349,19 +350,19 @@ async def reset_password(
         # Get user from token
         user_id = int(payload.get("sub"))
         user = db.query(User).filter(User.id == user_id).first()
-        
+
         if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired reset token"
             )
-        
+
         # Update password
         user.hashed_password = get_password_hash(reset_data.new_password)
         db.commit()
-        
+
         return {"message": "Password has been reset successfully"}
-        
+
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
@@ -369,3 +370,97 @@ async def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired reset token"
         )
+
+
+# =============================================================================
+# SOCIAL LOGIN (Google OAuth)
+# =============================================================================
+
+class SocialLoginRequest(BaseModel):
+    email: EmailStr
+    name: str
+    provider: str
+    provider_id: str
+    picture: Optional[str] = None
+
+
+@router.post("/social-login", response_model=TokenWithUser)
+async def social_login(
+    login_data: SocialLoginRequest,
+    db: Session = Depends(get_db),
+    request: Request = None
+):
+    """
+    Handle social login from Google OAuth (NextAuth).
+    Creates user if doesn't exist, or returns existing user token.
+    """
+    # Find user by email
+    user = db.query(User).filter(User.email == login_data.email).first()
+
+    if not user:
+        # Create new user
+        # Extract username from email (before @)
+        username_base = login_data.email.split('@')[0]
+        username = username_base
+
+        # Ensure username is unique
+        counter = 1
+        while db.query(User).filter(User.username == username).first():
+            username = f"{username_base}_{counter}"
+            counter += 1
+
+        user = User(
+            email=login_data.email,
+            username=username,
+            full_name=login_data.name,
+            avatar=login_data.picture,
+            hashed_password="",  # No password for OAuth users
+            is_active=True,
+            is_superuser=False
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        # Update user info if changed
+        if login_data.picture and user.avatar != login_data.picture:
+            user.avatar = login_data.picture
+        if login_data.name and user.full_name != login_data.name:
+            user.full_name = login_data.name
+        db.commit()
+
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account has been disabled"
+        )
+
+    # Create access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=access_token_expires
+    )
+
+    # Create refresh token (no expires_delta parameter)
+    refresh_token = create_refresh_token(
+        data={"sub": str(user.id)}
+    )
+
+    # Return both tokens and user data
+    return TokenWithUser(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        user=UserResponse(
+            id=user.id,
+            email=user.email,
+            username=user.username,
+            full_name=user.full_name,
+            phone=user.phone,
+            avatar=user.avatar,
+            is_active=user.is_active,
+            created_at=user.created_at
+        )
+    )

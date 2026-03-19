@@ -48,7 +48,8 @@ class OrderUpdate(BaseModel):
 class OrderResponse(OrderBase):
     id: int
     order_number: str
-    user_id: int
+    user_id: Optional[int] = None  # Made optional for guest orders
+    guest_email: Optional[str] = None  # Added for guest orders
     status: str
     payment_status: str
     subtotal: float

@@ -34,14 +34,24 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response = await authApi.login({ email, password });
           const { access_token, refresh_token } = response.data;
-          
+
           if (!access_token || !refresh_token) {
             throw new Error('Invalid response from login API');
           }
-          
+
+          // Save tokens to localStorage FIRST
           localStorage.setItem('access_token', access_token);
           localStorage.setItem('refresh_token', refresh_token);
 
+          // Manually set axios header to ensure it's available immediately
+          import('@/lib/api').then(({ api }) => {
+            api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+          });
+
+          // Wait a tiny bit to ensure interceptor picks up the token
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Now fetch user data
           const userResponse = await authApi.getMe();
           const user = userResponse.data;
 

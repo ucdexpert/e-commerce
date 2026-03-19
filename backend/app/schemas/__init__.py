@@ -5,6 +5,7 @@ from .user import (
     UserUpdate,
     UserResponse,
     Token,
+    TokenWithUser,
     TokenRefresh,
     LoginRequest,
 )
@@ -77,6 +78,7 @@ __all__ = [
     "UserUpdate",
     "UserResponse",
     "Token",
+    "TokenWithUser",
     "TokenRefresh",
     "LoginRequest",
     # Product & Category
