@@ -358,7 +358,7 @@ export default function CheckoutPage() {
               // Authenticated user - show saved addresses
               showAddressForm ? (
                 <form onSubmit={handleSubmit(onSubmitAddress)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">First Name</label>
                       <input
@@ -382,7 +382,7 @@ export default function CheckoutPage() {
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">City</label>
                       <input
@@ -462,7 +462,7 @@ export default function CheckoutPage() {
             ) : checkoutMode === 'guest' ? (
               // Guest checkout - show address form directly
               <form className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">First Name</label>
                     <input

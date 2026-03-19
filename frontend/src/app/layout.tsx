@@ -29,7 +29,13 @@ export default function RootLayout({
       <body className="min-h-screen">
         <SessionProvider>
           {children}
-          <Toaster position="top-right" gutter={8} />
+          <Toaster 
+            position="top-center"
+            gutter={8}
+            toastOptions={{
+              style: { maxWidth: '90vw' }
+            }}
+          />
         </SessionProvider>
       </body>
     </html>

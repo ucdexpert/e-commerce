@@ -310,7 +310,7 @@ export default function AdminCategories() {
       {/* Add/Edit Category Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg">
+          <div className="bg-white rounded-xl w-full max-w-lg mx-4 sm:mx-auto">
             <div className="p-4 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold">
                 {editingCategory ? 'Edit Category' : 'Add Category'}

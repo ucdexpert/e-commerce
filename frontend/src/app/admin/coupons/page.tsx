@@ -421,7 +421,7 @@ export default function AdminCoupons() {
       {/* Add/Edit Coupon Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-lg mx-4 sm:mx-auto max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
               <h2 className="text-xl font-bold">
                 {editingCoupon ? 'Edit Coupon' : 'Create Coupon'}

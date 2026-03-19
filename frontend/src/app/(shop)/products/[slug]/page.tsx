@@ -290,7 +290,7 @@ export default function ProductDetailPage() {
                       key={index}
                       onClick={() => setActiveImage(index)}
                       className={cn(
-                        "w-20 h-20 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all",
+                        "w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all",
                         activeImage === index
                           ? "border-primary ring-2 ring-primary/20"
                           : "border-gray-200 hover:border-primary/50"

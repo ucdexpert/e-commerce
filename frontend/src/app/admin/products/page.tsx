@@ -412,8 +412,8 @@ export default function AdminProducts() {
 
       {/* Products Table */}
       <div className="bg-white rounded-xl border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-4 px-4">
+          <table className="min-w-[700px] w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="p-4 text-left">
