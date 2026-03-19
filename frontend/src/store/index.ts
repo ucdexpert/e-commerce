@@ -44,18 +44,10 @@ export const useAuthStore = create<AuthState>()(
           localStorage.setItem('access_token', access_token);
           localStorage.setItem('refresh_token', refresh_token);
 
-          // Set axios header IMMEDIATELY on all api instances
-          import('@/lib/api').then(({ api }) => {
-            api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-          });
-          
-          // Also set on authApi directly
-          authApi.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+          // Set axios header IMMEDIATELY - Direct import, no dynamic import
+          api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
-          // Wait a tiny bit to ensure interceptor picks up the token
-          await new Promise(resolve => setTimeout(resolve, 100));
-
-          // Now fetch user data
+          // Now fetch user data (header is already set)
           const userResponse = await authApi.getMe();
           const user = userResponse.data;
 

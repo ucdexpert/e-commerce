@@ -25,9 +25,9 @@ export default function Footer() {
 
             {/* Social Media */}
             <div className="flex gap-3">
-              <SocialLink href="https://facebook.com" icon={<Facebook className="w-5 h-5" />} label="Facebook" />
-              <SocialLink href="https://twitter.com" icon={<Twitter className="w-5 h-5" />} label="Twitter" />
-              <SocialLink href="https://instagram.com" icon={<Instagram className="w-5 h-5" />} label="Instagram" />
+              <SocialLink href="https://www.facebook.com/uzairkhilji.uzairkhilji/" icon={<Facebook className="w-5 h-5" />} label="Facebook" />
+              <SocialLink href="https://x.com/UzairKhilj60869" icon={<Twitter className="w-5 h-5" />} label="Twitter" />
+              <SocialLink href="https://www.instagram.com/uzairkhilji.uzairkhilji/" icon={<Instagram className="w-5 h-5" />} label="Instagram" />
             </div>
           </div>
 
@@ -88,8 +88,20 @@ export default function Footer() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-0.5">Phone</p>
-                  <a href="tel:+923001234567" className="text-sm hover:text-primary transition-colors">
-                    +92 300 1234567
+                  <a href="tel:+923170219387" className="text-sm hover:text-primary transition-colors">
+                    +92 317-0219387
+                  </a>
+                </div>
+              </li>
+              <li className="flex items-start gap-3 group">
+                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center
+                              group-hover:bg-primary/20 transition-colors">
+                  <Phone className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">WhatsApp</p>
+                  <a href="https://wa.me/923170219387" className="text-sm hover:text-primary transition-colors">
+                    +92 317-0219387
                   </a>
                 </div>
               </li>

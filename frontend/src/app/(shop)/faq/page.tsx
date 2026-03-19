@@ -197,7 +197,7 @@ export default function FAQPage() {
               Contact Us
             </a>
             <a
-              href="https://wa.me/923001234567"
+              href="https://wa.me/923170219387"
               target="_blank"
               rel="noopener noreferrer"
               className="px-6 py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors"
