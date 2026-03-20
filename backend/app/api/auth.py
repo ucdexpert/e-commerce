@@ -23,7 +23,7 @@ from ..schemas import (
 )
 from datetime import datetime, timedelta
 from ..core.config import settings
-from ..utils.email import send_reset_email, send_verification_email
+from ..utils.email import send_reset_email, send_verification_email, send_email
 from pydantic import BaseModel, EmailStr
 import re
 from jose import jwt
@@ -190,6 +190,7 @@ async def register(request: Request, user_data: UserCreate, db: Session = Depend
     try:
         token = create_verification_token(user.email)
         send_verification_email(user.email, token)
+        print(f"Verification email sent to {user.email}")
     except Exception as e:
         print(f"Failed to send verification email: {e}")
         # Don't fail registration if email fails
@@ -242,7 +243,55 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
         # Mark user as verified
         user.is_verified = True
         db.commit()
-        
+
+        # Send welcome email after successful verification
+        try:
+            frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+            welcome_html = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #2563EB; font-size: 32px; margin-bottom: 20px;">
+                    🎉 Welcome to E-Shop!
+                </h1>
+                <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
+                    Hi {user.full_name or user.username},
+                </p>
+                <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
+                    Your email has been verified successfully! Your account is now active and ready to use.
+                </p>
+                <div style="background: #F3F4F6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #6B7280;">
+                        <strong>Your Account:</strong><br>
+                        Email: {user.email}<br>
+                        Username: {user.username}
+                    </p>
+                </div>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{frontend_url}/products"
+                       style="background-color: #2563EB; color: white;
+                              padding: 14px 28px; text-decoration: none;
+                              border-radius: 8px; display: inline-block;
+                              font-weight: bold; font-size: 16px;">
+                        🛍️ Start Shopping →
+                    </a>
+                </div>
+                <p style="font-size: 14px; color: #6B7280; margin-top: 30px; border-top: 1px solid #E5E7EB; padding-top: 20px;">
+                    Thank you for joining E-Shop! We're excited to have you as part of our community.
+                </p>
+                <p style="font-size: 14px; color: #9CA3AF;">
+                    Need help? Contact us at hassankhilji26@gmail.com
+                </p>
+            </div>
+            """
+            send_email(
+                to_email=user.email,
+                subject="Welcome to E-Shop! Let's Start Shopping 🎊",
+                html=welcome_html
+            )
+            print(f"Welcome email sent to {user.email}")
+        except Exception as e:
+            print(f"Failed to send welcome email: {e}")
+            # Don't fail verification if welcome email fails
+
         return {
             "message": "Email verified successfully! You can now login.",
             "already_verified": False
@@ -309,10 +358,22 @@ async def login(request: Request, login_data: LoginRequest, db: Session = Depend
         data={"sub": str(user.id), "email": user.email}
     )
 
+    # Return tokens AND user info
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "username": user.username,
+            "full_name": user.full_name,
+            "phone": user.phone,
+            "avatar": user.avatar,
+            "is_active": user.is_active,
+            "is_superuser": user.is_superuser,
+            "created_at": user.created_at.isoformat() if user.created_at else None
+        }
     }
 
 @router.post("/refresh", response_model=Token)

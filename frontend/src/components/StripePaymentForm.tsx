@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { CreditCard, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -16,6 +16,18 @@ export default function StripePaymentForm({ amount, onSuccess, onError }: Stripe
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
+
+  // Debug: Log Stripe loading state
+  useEffect(() => {
+    if (!stripe) {
+      console.log('Stripe.js not loaded yet...');
+      setStripeError('Stripe is loading, please wait...');
+    } else {
+      console.log('Stripe.js loaded successfully!');
+      setStripeError(null);
+    }
+  }, [stripe]);
 
   const handleStripePayment = async () => {
     // Validation 1: Check if Stripe is loaded
@@ -96,34 +108,54 @@ export default function StripePaymentForm({ amount, onSuccess, onError }: Stripe
 
   return (
     <div className="space-y-4">
+      {/* Stripe Loading Error */}
+      {stripeError && (
+        <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3 text-sm text-yellow-800">
+          ⚠️ {stripeError}
+        </div>
+      )}
+
       {/* Card Element */}
-      <div className="border border-gray-300 rounded-xl p-4 bg-white shadow-sm">
-        <div className="text-sm font-medium text-gray-700 mb-2">Card Information:</div>
-        <CardElement
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#374151',
-                '::placeholder': {
-                  color: '#9CA3AF',
+      <div className={`border rounded-xl p-4 bg-white shadow-sm transition-all ${
+        stripe ? 'border-gray-300' : 'border-gray-200 bg-gray-50'
+      }`}>
+        <div className="text-sm font-medium text-gray-700 mb-2">
+          Card Information: {stripe ? '✅' : '⏳ Loading...'}
+        </div>
+        <div className={`transition-opacity ${stripe ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+          <CardElement
+            options={{
+              style: {
+                base: {
+                  fontSize: '16px',
+                  color: '#374151',
+                  '::placeholder': {
+                    color: '#9CA3AF',
+                  },
+                  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
                 },
-                fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+                invalid: {
+                  color: '#EF4444',
+                  iconColor: '#EF4444',
+                },
               },
-              invalid: {
-                color: '#EF4444',
-                iconColor: '#EF4444',
-              },
-            },
-            hidePostalCode: true,
-          }}
-          onChange={(e) => {
-            setCardComplete(e.complete ?? false);
-            if (e.error) {
-              toast.error(e.error.message);
-            }
-          }}
-        />
+              hidePostalCode: true,
+            }}
+            onChange={(e) => {
+              setCardComplete(e.complete ?? false);
+              if (e.error) {
+                setStripeError(e.error.message);
+                toast.error(e.error.message);
+              }
+            }}
+          />
+        </div>
+        {!stripe && (
+          <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+            <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+            Loading Stripe...
+          </div>
+        )}
       </div>
 
       {/* Security Notice */}

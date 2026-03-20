@@ -74,6 +74,15 @@ export default function ProductDetailPage() {
   const { addToRecentlyViewed } = useUIStore();
   const [isAdding, setIsAdding] = useState(false);
 
+  // Safe image handling - fallback for null/undefined images
+  const images = product?.images?.length > 0 
+    ? product.images 
+    : product?.image 
+      ? [product.image] 
+      : ['/placeholder.svg'];
+  
+  const mainImage = images[activeImage] || '/placeholder.svg';
+
   // Share functionality
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const shareText = product ? `Check out ${product.name}!` : 'Check out this product!';
@@ -106,12 +115,8 @@ export default function ProductDetailPage() {
 
   const fetchReviews = async (productId: number) => {
     try {
-      // Note: API endpoint may vary based on your backend
-      const response = await fetch(`/api/products/${productId}/reviews`);
-      if (response.ok) {
-        const data = await response.json();
-        setReviews(data.reviews || data || []);
-      }
+      const response = await productsApi.getReviews(productId);
+      setReviews(response.data.reviews || []);
     } catch (error) {
       console.error('Failed to fetch reviews:', error);
       // Set empty array if fetch fails
@@ -250,7 +255,7 @@ export default function ProductDetailPage() {
             {/* Left: Image Gallery */}
             <div className="p-6 lg:p-8 bg-[#F8F9FA]">
               {/* Main Image - responsive height with zoom */}
-              <div 
+              <div
                 className="w-full h-64 md:h-96 lg:h-[450px] bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 flex items-center justify-center p-4 mb-4 relative cursor-zoom-in group"
                 onClick={() => {
                   setLightboxIndex(activeImage);
@@ -258,8 +263,8 @@ export default function ProductDetailPage() {
                 }}
               >
                 <img
-                  src={product.images && product.images[activeImage] ? product.images[activeImage] : '/placeholder.svg'}
-                  alt={product.name}
+                  src={mainImage}
+                  alt={product?.name || 'Product'}
                   className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -283,9 +288,9 @@ export default function ProductDetailPage() {
                 </span>
               )}
 
-              {product.images && product.images.length > 1 && (
+              {images.length > 1 && (
                 <div className="flex gap-3 overflow-x-auto pb-2">
-                  {product.images.map((image, index) => (
+                  {images.map((image, index) => (
                     <button
                       key={index}
                       onClick={() => setActiveImage(index)}
@@ -297,7 +302,7 @@ export default function ProductDetailPage() {
                       )}
                     >
                       <img
-                        src={image || '/placeholder.svg'}
+                        src={image}
                         alt=""
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -949,7 +954,7 @@ export default function ProductDetailPage() {
           open={lightboxOpen}
           close={() => setLightboxOpen(false)}
           index={lightboxIndex}
-          slides={(product?.images || []).map(img => ({ src: img }))}
+          slides={images.map(img => ({ src: img }))}
           on={{
             view: ({ index }) => setLightboxIndex(index || 0),
           }}

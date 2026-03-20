@@ -7,7 +7,7 @@ export default function Footer() {
   return (
     <footer className="bg-gray-900 text-gray-300">
       {/* Main Footer */}
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-8 md:py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
           {/* Company Info */}
           <div>
@@ -16,9 +16,9 @@ export default function Footer() {
                               flex items-center justify-center text-white font-bold text-xl">
                 E
               </div>
-              <span className="text-2xl font-bold text-white">E-Shop</span>
+              <span className="text-xl md:text-2xl font-bold text-white">E-Shop</span>
             </Link>
-            <p className="text-gray-400 mb-6 leading-relaxed">
+            <p className="text-sm md:text-base text-gray-400 mb-6 leading-relaxed">
               Your one-stop destination for quality products at amazing prices.
               We offer the best selection with unbeatable customer service.
             </p>
@@ -33,7 +33,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
+            <h4 className="text-base md:text-lg font-bold text-white mb-5 flex items-center gap-2">
               <span className="w-1 h-5 bg-gradient-to-b from-primary to-secondary rounded-full" />
               Quick Links
             </h4>
@@ -48,7 +48,7 @@ export default function Footer() {
 
           {/* Customer Service */}
           <div>
-            <h4 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
+            <h4 className="text-base md:text-lg font-bold text-white mb-5 flex items-center gap-2">
               <span className="w-1 h-5 bg-gradient-to-b from-primary to-secondary rounded-full" />
               Customer Service
             </h4>
@@ -64,7 +64,7 @@ export default function Footer() {
 
           {/* Contact Info */}
           <div>
-            <h4 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
+            <h4 className="text-base md:text-lg font-bold text-white mb-5 flex items-center gap-2">
               <span className="w-1 h-5 bg-gradient-to-b from-primary to-secondary rounded-full" />
               Contact Us
             </h4>
@@ -165,8 +165,8 @@ function SocialLink({ href, icon, label }: SocialLinkProps) {
     <a
       href={href}
       aria-label={label}
-      className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center 
-               text-gray-400 hover:bg-primary hover:text-white transition-all duration-200 
+      className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-gray-800 flex items-center justify-center
+               text-gray-400 hover:bg-primary hover:text-white transition-all duration-200
                hover:scale-110 hover:shadow-lg hover:shadow-primary/30"
     >
       {icon}

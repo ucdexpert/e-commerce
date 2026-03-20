@@ -9,11 +9,23 @@ from fastapi import HTTPException
 # Load environment variables
 load_dotenv()
 
+# Get Cloudinary credentials
+cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+api_key = os.getenv("CLOUDINARY_API_KEY")
+api_secret = os.getenv("CLOUDINARY_API_SECRET")
+
+# Validate credentials
+if not cloud_name or not api_key or not api_secret:
+    print("⚠️ Warning: Cloudinary credentials not fully configured")
+    print(f"Cloud name: {cloud_name or 'MISSING'}")
+    print(f"API Key: {api_key or 'MISSING'}")
+    print(f"API Secret: {'*' * 8 if api_secret else 'MISSING'}")
+
 # Configure Cloudinary
 cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET")
+    cloud_name=cloud_name,
+    api_key=api_key,
+    api_secret=api_secret
 )
 
 def upload_base64_image(base64_string: str) -> str:

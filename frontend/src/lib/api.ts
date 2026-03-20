@@ -10,6 +10,15 @@ export const api = axios.create({
   },
 });
 
+// Initialize token immediately when module loads (BEFORE any component renders)
+// This prevents 401 errors in React StrictMode
+if (typeof window !== 'undefined') {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  }
+}
+
 // Network status detection
 if (typeof window !== 'undefined') {
   window.addEventListener('offline', () => {
@@ -123,7 +132,8 @@ export const productsApi = {
   getBySlug: (slug: string) => api.get(`/products/slug/${slug}`),
   search: (q: string, params?: ProductParams) => api.get('/products/search', { params: { q, ...params } }),
   getRelated: (id: number, limit: number = 4) => api.get(`/products/${id}/related`, { params: { limit } }),
-  addReview: (productId: number, data: ReviewData) => 
+  getReviews: (productId: number) => api.get(`/products/${productId}/reviews`),
+  addReview: (productId: number, data: ReviewData) =>
     api.post(`/products/${productId}/reviews`, null, { params: data }),
 };
 

@@ -53,24 +53,21 @@ function ProductsContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Build filters object for API call
-  const filters = {
-    page: currentPage,
-    per_page: 12,
-    search: currentSearch || undefined,
-    category_id: currentCategory || undefined,
-    min_price: currentMinPrice ? Number(currentMinPrice) : undefined,
-    max_price: currentMaxPrice ? Number(currentMaxPrice) : undefined,
-    is_featured: currentIsFeatured || undefined,
-    is_on_sale: currentIsOnSale || undefined,
-    sort_by: currentSortBy,
-    sort_order: currentSortOrder,
-  };
-
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const params: any = { ...filters };
+      const params: any = {
+        page: currentPage,
+        per_page: 12,
+        search: currentSearch || undefined,
+        category_id: currentCategory || undefined,
+        min_price: currentMinPrice ? Number(currentMinPrice) : undefined,
+        max_price: currentMaxPrice ? Number(currentMaxPrice) : undefined,
+        is_featured: currentIsFeatured || undefined,
+        is_on_sale: currentIsOnSale || undefined,
+        sort_by: currentSortBy,
+        sort_order: currentSortOrder,
+      };
       // Remove undefined values
       Object.keys(params).forEach((key) => {
         if (params[key] === undefined) delete params[key];
@@ -85,7 +82,7 @@ function ProductsContent() {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [currentPage, currentSearch, currentCategory, currentMinPrice, currentMaxPrice, currentIsFeatured, currentIsOnSale, currentSortBy, currentSortOrder]);
 
   useEffect(() => {
     fetchProducts();

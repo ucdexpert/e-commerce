@@ -90,10 +90,15 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 # ============== MIDDLEWARE ==============
 
-# CORS middleware - Allow all origins
+# CORS middleware - Restrict to specific origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://e-commerce-mu-wheat-87.vercel.app",
+        "https://e-commerce-ekvsaiio3-ucdexperts-projects.vercel.app",
+        "https://e-commerce-mxp3n24u3-ucdexperts-projects.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

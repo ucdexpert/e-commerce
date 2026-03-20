@@ -34,31 +34,35 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           const response = await authApi.login({ email, password });
-          const { access_token, refresh_token } = response.data;
+          const { access_token, refresh_token, user } = response.data;
 
           if (!access_token || !refresh_token) {
             throw new Error('Invalid response from login API');
           }
 
-          // Save tokens to localStorage FIRST
+          // Save tokens to localStorage
           localStorage.setItem('access_token', access_token);
           localStorage.setItem('refresh_token', refresh_token);
 
-          // Set axios header IMMEDIATELY - Direct import, no dynamic import
+          // Set axios header IMMEDIATELY
           api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
-          // Now fetch user data (header is already set)
-          const userResponse = await authApi.getMe();
-          const user = userResponse.data;
+          // Use user from login response (don't call getMe again - providers.tsx will call fetchUser)
+          const userData = user;
 
           // Save user info including role
-          localStorage.setItem('user', JSON.stringify(user));
+          if (userData) {
+            localStorage.setItem('user', JSON.stringify(userData));
 
-          // Set cookies for middleware
-          document.cookie = `access_token=${access_token}; path=/; max-age=${60 * 60 * 24 * 7}`;
-          document.cookie = `user_role=${user.is_superuser ? 'admin' : 'customer'}; path=/; max-age=${60 * 60 * 24 * 7}`;
+            // Set cookies for middleware
+            document.cookie = `access_token=${access_token}; path=/; max-age=${60 * 60 * 24 * 7}`;
+            document.cookie = `user_role=${userData.is_superuser ? 'admin' : 'customer'}; path=/; max-age=${60 * 60 * 24 * 7}`;
 
-          set({ user, isAuthenticated: true, isLoading: false });
+            set({ user: userData, isAuthenticated: true, isLoading: false });
+          } else {
+            // No user in response - will be fetched by providers.tsx
+            set({ isLoading: false });
+          }
         } catch (error: any) {
           set({ isLoading: false });
           throw error;
@@ -78,6 +82,10 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         authApi.logout();
+        // Clear all auth data from localStorage
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
         set({ user: null, isAuthenticated: false });
       },
 

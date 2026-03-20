@@ -18,6 +18,15 @@ const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_your_stripe_publishable_key'
 );
 
+// Debug: Log Stripe key (remove in production)
+if (typeof window !== 'undefined') {
+  const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  console.log('Stripe Key loaded:', stripeKey ? `${stripeKey.substring(0, 15)}...` : 'NOT LOADED');
+  if (!stripeKey || stripeKey.includes('YOUR_')) {
+    console.error('⚠️ Stripe key not configured! Check .env.local file');
+  }
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
@@ -139,10 +148,10 @@ export default function CheckoutPage() {
   };
 
   const handlePlaceOrder = async (stripePaymentIntentId?: string) => {
-    // Validation for Stripe payment
-    if (paymentMethod === 'stripe') {
-      // Card input validation is handled in StripePaymentForm component
-      // The form won't submit if card is incomplete
+    // CRITICAL: Validate Stripe payment is complete before creating order
+    if (paymentMethod === 'stripe' && !stripePaymentIntentId && !paymentIntentId) {
+      toast.error('Please complete card payment first');
+      return;
     }
 
     if (!selectedAddress && !checkoutMode) {
@@ -175,6 +184,13 @@ export default function CheckoutPage() {
         orderData.guest_email = guestEmail;
       }
 
+      // Add Stripe payment intent ID if available
+      const finalPaymentIntentId = stripePaymentIntentId || paymentIntentId;
+      if (paymentMethod === 'stripe' && finalPaymentIntentId) {
+        orderData.stripe_payment_id = finalPaymentIntentId;
+        orderData.payment_status = 'paid';
+      }
+
       const response = await ordersApi.create(orderData);
       const orderId = response.data.id;
 
@@ -196,8 +212,8 @@ export default function CheckoutPage() {
         return;
       }
 
-      // If Stripe, wait for payment
-      if (paymentMethod === 'stripe' && stripePaymentIntentId) {
+      // If Stripe, confirm payment with backend
+      if (paymentMethod === 'stripe' && finalPaymentIntentId) {
         // Confirm payment with backend
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
         const token = localStorage.getItem('access_token');
@@ -215,7 +231,7 @@ export default function CheckoutPage() {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            payment_intent_id: stripePaymentIntentId,
+            payment_intent_id: finalPaymentIntentId,
           }),
         });
 
@@ -580,6 +596,18 @@ export default function CheckoutPage() {
             {/* Stripe Payment Form */}
             {paymentMethod === 'stripe' && (
               <div className="mt-6 pt-6 border-t">
+                {/* Important Notice */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-blue-800 font-medium">
+                    ⚠️ Important: You must complete card payment first before placing order.
+                  </p>
+                  <ol className="text-sm text-blue-700 mt-2 space-y-1 list-decimal list-inside">
+                    <li>Enter your card details below</li>
+                    <li>Click "Pay ${total.toFixed(2)}" to process payment</li>
+                    <li>Once payment succeeds, order will be placed automatically</li>
+                  </ol>
+                </div>
+
                 <h3 className="text-lg font-semibold mb-4">Enter Card Details:</h3>
 
                 {/* Card Input */}
@@ -728,10 +756,32 @@ export default function CheckoutPage() {
 
             <button
               onClick={() => handlePlaceOrder()}
-              disabled={isProcessing || !selectedAddress || (paymentMethod === 'stripe' && orderCreated)}
+              disabled={
+                isProcessing || 
+                !selectedAddress || 
+                (paymentMethod === 'stripe' && (!stripePaymentReady || orderCreated))
+              }
               className="w-full py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isProcessing ? 'Processing...' : paymentMethod === 'stripe' && orderCreated ? 'Complete Payment Below' : 'Place Order'}
+              {isProcessing ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : paymentMethod === 'stripe' && !stripePaymentReady ? (
+                <>
+                  <span>💳 Complete Payment First</span>
+                </>
+              ) : paymentMethod === 'stripe' && orderCreated ? (
+                <>
+                  <span>✅ Payment Complete - Order Placed</span>
+                </>
+              ) : (
+                <>
+                  <span>📦 Place Order</span>
+                  {paymentMethod === 'cod' && <span>(COD)</span>}
+                </>
+              )}
             </button>
           </div>
         </div>

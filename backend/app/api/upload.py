@@ -48,28 +48,33 @@ async def upload_multiple_images(
         if file_ext not in ALLOWED_EXTENSIONS:
             continue
 
-        # Check file size
-        file.seek(0, 2)
-        if file.tell() > MAX_FILE_SIZE:
-            file.seek(0)
-            continue
-        file.seek(0)
-
         try:
-            # Read file content
+            # Read file content first (FastAPI UploadFile doesn't support seek(0, 2))
             file_content = await file.read()
-            
+            file_size = len(file_content)
+
+            # Validate size (5MB limit)
+            if file_size > MAX_FILE_SIZE:
+                print(f"Skipped {file.filename}: File too large ({file_size} bytes)")
+                continue
+
+            # Validate type
+            allowed_types = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/jpg']
+            if file.content_type not in allowed_types:
+                print(f"Skipped {file.filename}: Invalid content type ({file.content_type})")
+                continue
+
             # Convert to base64
             base64_string = base64.b64encode(file_content).decode('utf-8')
-            
+
             # Determine MIME type
             mime_type = f"image/{file_ext.replace('.', '')}"
             if mime_type == "image/jpg":
                 mime_type = "image/jpeg"
-            
+
             # Create data URL
             data_url = f"data:{mime_type};base64,{base64_string}"
-            
+
             # Upload to Cloudinary
             cloudinary_url = upload_base64_image(data_url)
             uploaded_urls.append(cloudinary_url)

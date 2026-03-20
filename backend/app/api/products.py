@@ -14,8 +14,17 @@ from ..schemas import (
 )
 from datetime import datetime
 from ..utils.cloudinary import upload_base64_image
+from .admin import get_current_admin_user
+import uuid
+import re
 
 router = APIRouter(prefix="/products", tags=["Products"])
+
+def generate_sku(name: str) -> str:
+    """Generate unique SKU from product name + random UUID"""
+    clean_name = re.sub(r'[^a-zA-Z0-9]', '', name)[:6].upper()
+    random_part = str(uuid.uuid4())[:8].upper()
+    return f"{clean_name}-{random_part}"
 
 def get_product_by_id(product_id: int, db: Session):
     product = db.query(Product).filter(Product.id == product_id).first()
@@ -29,7 +38,8 @@ def get_product_by_id(product_id: int, db: Session):
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 def create_product(
     product_data: ProductCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
 ):
     # Check if slug exists
     existing = db.query(Product).filter(Product.slug == product_data.slug).first()
@@ -38,6 +48,15 @@ def create_product(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Product with this slug already exists"
         )
+
+    # If SKU is empty or whitespace, generate a unique one
+    if not product_data.sku or product_data.sku.strip() == '':
+        product_data.sku = generate_sku(product_data.name)
+    
+    # Check if generated SKU already exists, if so generate another
+    existing_sku = db.query(Product).filter(Product.sku == product_data.sku).first()
+    if existing_sku:
+        product_data.sku = generate_sku(product_data.name)
 
     # Process images - upload base64 images to Cloudinary
     processed_images = []
@@ -55,11 +74,11 @@ def create_product(
             elif img:
                 # Already a URL, use as-is
                 processed_images.append(img)
-    
+
     # Create product with processed image URLs
     product_dict = product_data.model_dump(exclude=['category_ids', 'images'])
     product_dict['images'] = processed_images
-    
+
     product = Product(**product_dict)
     db.add(product)
     db.commit()
@@ -247,9 +266,30 @@ def update_product(
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(
     product_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
 ):
     product = get_product_by_id(product_id, db)
+    
+    # Step 1: Delete cart items with this product
+    from app.models.cart import CartItem
+    db.query(CartItem).filter(
+        CartItem.product_id == product_id
+    ).delete()
+    
+    # Step 2: Delete wishlist items with this product
+    from app.models.wishlist import WishlistItem
+    db.query(WishlistItem).filter(
+        WishlistItem.product_id == product_id
+    ).delete()
+    
+    # Step 3: Delete reviews
+    from app.models.review import Review
+    db.query(Review).filter(
+        Review.product_id == product_id
+    ).delete()
+    
+    # Step 4: Now safe to delete product
     db.delete(product)
     db.commit()
 
