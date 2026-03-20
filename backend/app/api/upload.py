@@ -15,6 +15,15 @@ UPLOAD_DIR = "uploads/products"
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
+# Root upload endpoint for backwards compatibility
+@router.post("/")
+async def upload_root():
+    """Upload endpoint - use /images for image uploads"""
+    return {
+        "success": False,
+        "message": "Use /api/upload/images for image uploads"
+    }
+
 def get_current_user_id(authorization: Optional[str] = Header(None)) -> Optional[int]:
     """Get current user ID from token"""
     if not authorization:

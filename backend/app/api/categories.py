@@ -4,6 +4,7 @@ from typing import List
 from ..core.database import get_db
 from ..models import Category
 from ..schemas import CategoryCreate, CategoryUpdate, CategoryResponse
+import uuid
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
@@ -12,14 +13,25 @@ def create_category(
     category_data: CategoryCreate,
     db: Session = Depends(get_db)
 ):
-    existing = db.query(Category).filter(Category.slug == category_data.slug).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Category with this slug already exists"
-        )
+    # Check if slug exists, if so generate unique slug
+    slug = category_data.slug
+    original_slug = slug
+    counter = 1
     
-    category = Category(**category_data.model_dump())
+    while db.query(Category).filter(Category.slug == slug).first():
+        slug = f"{original_slug}-{uuid.uuid4().hex[:6]}"
+        counter += 1
+        if counter > 100:  # Safety limit
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Could not generate unique slug"
+            )
+    
+    # Create category with unique slug
+    category_dict = category_data.model_dump()
+    category_dict['slug'] = slug
+    
+    category = Category(**category_dict)
     db.add(category)
     db.commit()
     db.refresh(category)
