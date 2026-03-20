@@ -49,8 +49,16 @@ def create_order(
     - For authenticated users: requires JWT token, uses user's cart
     - For guest users: requires guest_email, creates order without user account
     """
-    current_user_id = None
     
+    # Validate shipping address is provided
+    if not order_data.shipping_address_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Shipping address select karein"
+        )
+    
+    current_user_id = None
+
     # Try to get authenticated user
     if authorization:
         scheme, _, token = authorization.partition(" ")
@@ -61,7 +69,7 @@ def create_order(
                     current_user_id = int(payload.get("sub"))
                 except (ValueError, TypeError):
                     pass
-    
+
     # If no user and no guest email, require authentication
     if not current_user_id and not guest_email:
         raise HTTPException(
