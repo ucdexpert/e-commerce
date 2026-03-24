@@ -8,7 +8,7 @@ from .core.database import engine, Base, get_db
 from .core.config import settings
 from .core.security import decode_token
 from .models import User
-from .api import auth, products, categories, cart, orders, addresses, wishlist, search, admin, upload, contact
+from .api import auth, products, categories, cart, orders, addresses, wishlist, search, admin, upload, contact, jazzcash, easypaisa, variants, returns, roles
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -154,6 +154,11 @@ app.include_router(search.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(upload.router, prefix="/api")
 app.include_router(contact.router, prefix="/api")
+app.include_router(jazzcash.router, prefix="/api")
+app.include_router(easypaisa.router, prefix="/api")
+app.include_router(variants.router, prefix="/api")
+app.include_router(returns.router, prefix="/api")
+app.include_router(roles.router, prefix="/api")
 
 @app.get("/")
 def root():

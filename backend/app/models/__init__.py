@@ -8,6 +8,7 @@ from .review import Review
 from .wishlist import Wishlist, WishlistItem
 from .coupon import Coupon
 from .inventory import InventoryLog
+from .return_order import Return
 
 __all__ = [
     "User",
@@ -24,4 +25,5 @@ __all__ = [
     "WishlistItem",
     "Coupon",
     "InventoryLog",
+    "Return",
 ]

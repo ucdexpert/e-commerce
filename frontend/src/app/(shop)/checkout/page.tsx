@@ -6,12 +6,14 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { useAuthStore, useCartStore } from '@/store';
 import { addressesApi, ordersApi, Address, OrderCreateData } from '@/lib/api';
-import { CreditCard, Truck, CheckCircle, Tag, X } from 'lucide-react';
+import { CreditCard, Truck, CheckCircle, Tag, X, Smartphone } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import StripePaymentForm from '@/components/StripePaymentForm';
+import JazzCashPaymentForm from '@/components/JazzCashPaymentForm';
+import EasyPaisaPaymentForm from '@/components/EasyPaisaPaymentForm';
 
 // Initialize Stripe
 const stripePromise = loadStripe(
@@ -579,8 +581,43 @@ export default function CheckoutPage() {
                   checked={paymentMethod === 'stripe'}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 />
-                <span>Credit Card (Stripe)</span>
+                <CreditCard className="w-5 h-5 text-blue-600" />
+                <div>
+                  <span className="font-medium">Credit/Debit Card (Stripe)</span>
+                  <p className="text-xs text-gray-500">Visa, Mastercard, American Express</p>
+                </div>
               </label>
+              
+              <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer">
+                <input
+                  type="radio"
+                  name="payment"
+                  value="jazzcash"
+                  checked={paymentMethod === 'jazzcash'}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                />
+                <Smartphone className="w-5 h-5 text-red-600" />
+                <div>
+                  <span className="font-medium">JazzCash</span>
+                  <p className="text-xs text-gray-500">Mobile Wallet Payment</p>
+                </div>
+              </label>
+              
+              <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer">
+                <input
+                  type="radio"
+                  name="payment"
+                  value="easypaisa"
+                  checked={paymentMethod === 'easypaisa'}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                />
+                <Smartphone className="w-5 h-5 text-green-600" />
+                <div>
+                  <span className="font-medium">EasyPaisa</span>
+                  <p className="text-xs text-gray-500">Mobile Wallet Payment</p>
+                </div>
+              </label>
+              
               <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer">
                 <input
                   type="radio"
@@ -589,7 +626,11 @@ export default function CheckoutPage() {
                   checked={paymentMethod === 'cod'}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 />
-                <span>Cash on Delivery</span>
+                <Truck className="w-5 h-5 text-gray-600" />
+                <div>
+                  <span className="font-medium">Cash on Delivery</span>
+                  <p className="text-xs text-gray-500">Pay when you receive your order</p>
+                </div>
               </label>
             </div>
 
@@ -603,7 +644,7 @@ export default function CheckoutPage() {
                   </p>
                   <ol className="text-sm text-blue-700 mt-2 space-y-1 list-decimal list-inside">
                     <li>Enter your card details below</li>
-                    <li>Click "Pay ${total.toFixed(2)}" to process payment</li>
+                    <li>Click &quot;Pay ${total.toFixed(2)}&quot; to process payment</li>
                     <li>Once payment succeeds, order will be placed automatically</li>
                   </ol>
                 </div>
@@ -638,6 +679,44 @@ export default function CheckoutPage() {
                 <p className="text-xs text-gray-500 mt-3 flex items-center gap-1">
                   🔒 Your payment information is secure and encrypted with Stripe
                 </p>
+              </div>
+            )}
+
+            {/* JazzCash Payment Form */}
+            {paymentMethod === 'jazzcash' && (
+              <div className="mt-6 pt-6 border-t">
+                <JazzCashPaymentForm
+                  amount={total}
+                  orderId={createdOrderId || 0}
+                  onSuccess={() => {
+                    toast.success('Payment successful! Redirecting...');
+                    if (createdOrderId) {
+                      router.push(`/payment/success?order_id=${createdOrderId}&guest=true`);
+                    }
+                  }}
+                  onError={(error) => {
+                    console.error('JazzCash payment error:', error);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* EasyPaisa Payment Form */}
+            {paymentMethod === 'easypaisa' && (
+              <div className="mt-6 pt-6 border-t">
+                <EasyPaisaPaymentForm
+                  amount={total}
+                  orderId={createdOrderId || 0}
+                  onSuccess={() => {
+                    toast.success('Payment successful! Redirecting...');
+                    if (createdOrderId) {
+                      router.push(`/payment/success?order_id=${createdOrderId}&guest=true`);
+                    }
+                  }}
+                  onError={(error) => {
+                    console.error('EasyPaisa payment error:', error);
+                  }}
+                />
               </div>
             )}
           </div>

@@ -33,6 +33,7 @@ class Order(Base):
     # Relationships
     user = relationship("User", back_populates="orders", foreign_keys=[user_id])
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    returns = relationship("Return", back_populates="order", cascade="all, delete-orphan")
     shipping_address = relationship("Address", foreign_keys=[shipping_address_id])
     billing_address = relationship("Address", foreign_keys=[billing_address_id])
 
