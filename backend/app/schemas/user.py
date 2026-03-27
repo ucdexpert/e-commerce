@@ -9,10 +9,12 @@ class UserBase(BaseModel):
     username: str
     full_name: Optional[str] = None
     phone: Optional[str] = None
+    sms_notifications_enabled: Optional[bool] = True
 
 
 class UserCreate(UserBase):
     password: str
+    referral_code: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
@@ -22,6 +24,7 @@ class UserUpdate(BaseModel):
     phone: Optional[str] = None
     avatar: Optional[str] = None
     password: Optional[str] = None
+    sms_notifications_enabled: Optional[bool] = None
 
 
 class UserResponse(UserBase):
@@ -29,6 +32,8 @@ class UserResponse(UserBase):
     avatar: Optional[str] = None
     is_active: bool
     is_verified: bool = False
+    is_superuser: bool = False
+    two_factor_enabled: bool = False
     created_at: datetime
 
     class Config:

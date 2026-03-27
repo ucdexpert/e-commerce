@@ -8,12 +8,18 @@ from .core.database import engine, Base, get_db
 from .core.config import settings
 from .core.security import decode_token
 from .models import User
-from .api import auth, products, categories, cart, orders, addresses, wishlist, search, admin, upload, contact, jazzcash, easypaisa, variants, returns, roles
+from .api import auth, products, categories, cart, orders, addresses, wishlist, search, admin, upload, contact, jazzcash, easypaisa, variants, returns, roles, shipping, referral, bulk, newsletter
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+
+# Redis caching
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+import redis.asyncio as aioredis
+import os
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -31,6 +37,20 @@ app = FastAPI(
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ============== STARTUP EVENT ==============
+@app.on_event("startup")
+async def startup():
+    """Initialize Redis cache on startup"""
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    try:
+        redis = aioredis.from_url(redis_url)
+        await redis.ping()
+        FastAPICache.init(RedisBackend(redis), prefix="eshop-cache")
+        print("✓ Redis cache connected!")
+    except Exception as e:
+        print(f"⚠ Redis not available, continuing without cache: {e}")
+        # Continue without caching - app will still work
 
 # ============== GLOBAL EXCEPTION HANDLERS ==============
 
@@ -159,6 +179,10 @@ app.include_router(easypaisa.router, prefix="/api")
 app.include_router(variants.router, prefix="/api")
 app.include_router(returns.router, prefix="/api")
 app.include_router(roles.router, prefix="/api")
+app.include_router(shipping.router, prefix="/api")
+app.include_router(referral.router, prefix="/api")
+app.include_router(bulk.router, prefix="/api")
+app.include_router(newsletter.router, prefix="/api")
 
 @app.get("/")
 def root():

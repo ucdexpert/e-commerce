@@ -148,8 +148,8 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-bold text-gray-900 mb-1">Email Us</h3>
-                <a href="mailto:support@eshop.com" className="text-primary hover:underline">
-                  support@eshop.com
+                <a href="mailto:hassankhilji26@gmail.com" className="text-primary hover:underline break-all">
+                  hassankhilji26@gmail.com
                 </a>
               </div>
             </div>
@@ -163,8 +163,8 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-bold text-gray-900 mb-1">Call Us</h3>
-                <a href="tel:+923001234567" className="text-gray-700 hover:text-primary">
-                  +92-300-1234567
+                <a href="tel:+923170219387" className="text-gray-700 hover:text-primary">
+                  +92 317-0219387
                 </a>
                 <p className="text-xs text-gray-500 mt-1">Mon-Sat 9AM-6PM</p>
               </div>
@@ -194,8 +194,7 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-bold text-gray-900 mb-1">Our Office</h3>
-                <p className="text-sm text-gray-600">123 Commerce Street</p>
-                <p className="text-sm text-gray-600">New York, NY 10001</p>
+                <p className="text-sm text-gray-600">Karachi, Pakistan</p>
               </div>
             </div>
           </div>

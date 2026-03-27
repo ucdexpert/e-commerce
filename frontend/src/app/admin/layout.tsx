@@ -3,17 +3,18 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Package, 
-  ShoppingCart, 
-  Users, 
-  Tags, 
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Users,
+  Tags,
   TicketPercent,
   LogOut,
   Menu,
   X,
-  UserCircle
+  UserCircle,
+  Mail
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,7 @@ const sidebarItems = [
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/categories', label: 'Categories', icon: Tags },
   { href: '/admin/coupons', label: 'Coupons', icon: TicketPercent },
+  { href: '/admin/newsletter', label: 'Newsletter', icon: Mail },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -64,7 +66,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <div className="min-h-screen bg-gray-100">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -78,9 +80,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-4 border-b">
           <Link href="/admin" className="text-xl font-bold text-primary">
-            E-Shop Admin
+            CartHub Admin
           </Link>
-          <button 
+          <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
           >
@@ -92,17 +94,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <nav className="p-4 space-y-1">
           {sidebarItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || 
+            const isActive = pathname === item.href ||
               (item.href !== '/admin' && pathname.startsWith(item.href));
-            
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-                  isActive 
-                    ? 'bg-primary text-white' 
+                  isActive
+                    ? 'bg-primary text-white'
                     : 'text-gray-700 hover:bg-gray-100'
                 )}
               >
@@ -130,7 +132,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Top navbar */}
         <header className="sticky top-0 z-30 h-16 bg-white border-b flex items-center justify-between px-4">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
             >

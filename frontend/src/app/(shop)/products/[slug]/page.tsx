@@ -31,6 +31,82 @@ import toast from 'react-hot-toast';
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 
+// Product Schema for SEO
+function ProductSchema({ product }: { product: any }) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://your-domain.com';
+  
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.short_description || product.description,
+    image: product.images?.[0] || '/placeholder.svg',
+    sku: product.sku,
+    brand: {
+      '@type': 'Brand',
+      name: 'E-Shop',
+    },
+    offers: {
+      '@type': 'Offer',
+      price: product.compare_price || product.price,
+      priceCurrency: 'USD',
+      availability: product.stock_quantity > 0
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+      url: `${baseUrl}/products/${product.slug}`,
+    },
+    aggregateRating: product.review_count > 0 ? {
+      '@type': 'AggregateRating',
+      ratingValue: product.rating,
+      reviewCount: product.review_count,
+    } : undefined,
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}
+
+// BreadcrumbList Schema for SEO
+function BreadcrumbSchema({ product }: { product: any }) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://your-domain.com';
+  
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: baseUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Products',
+        item: `${baseUrl}/products`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: product.name,
+        item: `${baseUrl}/products/${product.slug}`,
+      },
+    ],
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}
+
 // Review interface
 interface Review {
   id: number;
@@ -239,6 +315,73 @@ export default function ProductDetailPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen">
+      {/* SEO Schema - Product */}
+      {product && (
+        <>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                '@context': 'https://schema.org',
+                '@type': 'Product',
+                name: product.name,
+                description: product.short_description || product.description,
+                image: product.images?.[0] || '/placeholder.svg',
+                sku: product.sku,
+                brand: {
+                  '@type': 'Brand',
+                  name: 'E-Shop',
+                },
+                offers: {
+                  '@type': 'Offer',
+                  price: product.compare_price || product.price,
+                  priceCurrency: 'USD',
+                  availability: product.stock_quantity > 0
+                    ? 'https://schema.org/InStock'
+                    : 'https://schema.org/OutOfStock',
+                  url: `${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/products/${product.slug}`,
+                },
+                aggregateRating: product.review_count > 0 ? {
+                  '@type': 'AggregateRating',
+                  ratingValue: product.rating,
+                  reviewCount: product.review_count,
+                } : undefined,
+              }),
+            }}
+          />
+          {/* BreadcrumbList Schema */}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                '@context': 'https://schema.org',
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: 'Home',
+                    item: typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com',
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: 'Products',
+                    item: `${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/products`,
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 3,
+                    name: product.name,
+                    item: `${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/products/${product.slug}`,
+                  },
+                ],
+              }),
+            }}
+          />
+        </>
+      )}
+
       <div className="container mx-auto px-4 py-6 md:py-8">
         {/* Breadcrumb */}
         <button
@@ -826,16 +969,16 @@ export default function ProductDetailPage() {
                           {/* Avatar */}
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold flex-shrink-0">
                             {review.user_avatar ? (
-                              <img src={review.user_avatar} alt={review.user_name} className="w-full h-full rounded-full object-cover" />
+                              <img src={review.user_avatar} alt={review.user_name || 'User'} className="w-full h-full rounded-full object-cover" />
                             ) : (
-                              review.user_name.charAt(0).toUpperCase()
+                              (review.user_name?.charAt(0) || 'U').toUpperCase()
                             )}
                           </div>
 
                           {/* Content */}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="font-semibold text-gray-900">{review.user_name}</span>
+                              <span className="font-semibold text-gray-900">{review.user_name || 'Anonymous'}</span>
                               {review.verified_purchase && (
                                 <span className="flex items-center gap-1 text-xs text-success bg-green-50 px-2 py-0.5 rounded-full">
                                   <BadgeCheck className="w-3 h-3" />

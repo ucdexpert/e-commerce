@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime, timedelta
+import json
 from ..core.database import get_db
 from ..models import User, Order, OrderItem, Product, Category, Coupon
 from ..schemas import (
@@ -19,6 +20,7 @@ from ..schemas import (
     OrderListResponse,
 )
 from ..core.security import decode_token
+from ..utils.sms import send_order_sms
 from fastapi import Header
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -33,37 +35,37 @@ def get_current_admin_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated"
         )
-    
+
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication scheme"
         )
-    
+
     payload = decode_token(token)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
-    
+
     try:
         user_id = int(payload.get("sub"))
         user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
-        
+
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found"
             )
-        
+
         if not user.is_superuser:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Admin access required"
             )
-        
+
         return user
     except (ValueError, TypeError):
         raise HTTPException(
@@ -216,7 +218,7 @@ def get_admin_orders(
 
     # Get total count before pagination
     total = query.count()
-    
+
     query = query.order_by(Order.created_at.desc())
 
     offset = (page - 1) * per_page
@@ -239,13 +241,13 @@ def get_admin_order(
 ):
     """Get single order details"""
     order = db.query(Order).filter(Order.id == order_id).first()
-    
+
     if not order:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Order not found"
         )
-    
+
     return order
 
 @router.patch("/orders/{order_id}/status", response_model=OrderResponse)
@@ -255,28 +257,76 @@ def update_order_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user)
 ):
-    """Update order status"""
+    """Update order status and send SMS notification to user"""
     order = db.query(Order).filter(Order.id == order_id).first()
-    
+
     if not order:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Order not found"
         )
-    
+
     new_status = status_data.get("status")
+    old_status = order.status
+    tracking_number = status_data.get("tracking_number")
+    estimated_delivery = status_data.get("estimated_delivery")
+
     if new_status:
         order.status = new_status
-        
+
         if new_status == "shipped":
             order.shipped_at = datetime.utcnow()
         elif new_status == "delivered":
             order.delivered_at = datetime.utcnow()
         elif new_status == "cancelled":
             order.cancelled_at = datetime.utcnow()
-    
+
+    # Update tracking info if provided
+    if tracking_number:
+        order.tracking_number = tracking_number
+    if estimated_delivery:
+        order.estimated_delivery = estimated_delivery
+
+    # Add tracking event when status changes
+    if new_status and new_status != old_status:
+        status_messages = {
+            "pending": "Order has been placed successfully",
+            "processing": "Order is being prepared for shipment",
+            "shipped": "Order has been shipped and is on its way",
+            "out_for_delivery": "Order is out for delivery",
+            "delivered": "Order has been delivered successfully",
+            "cancelled": "Order has been cancelled",
+            "refunded": "Refund has been processed"
+        }
+        
+        tracking_event = {
+            "status": new_status,
+            "message": status_messages.get(new_status, f"Order status updated to {new_status}"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # Get existing tracking events or initialize empty list
+        existing_events = order.tracking_events or []
+        if isinstance(existing_events, str):
+            existing_events = json.loads(existing_events)
+        
+        # Append new event
+        existing_events.append(tracking_event)
+        order.tracking_events = existing_events
+
     db.commit()
     db.refresh(order)
+
+    # Send SMS notification to user if status changed and user has SMS enabled
+    if new_status and new_status != old_status and order.user_id:
+        try:
+            user = db.query(User).filter(User.id == order.user_id).first()
+            if user and user.phone and user.sms_notifications_enabled:
+                send_order_sms(user.phone, order.order_number, new_status)
+        except Exception as e:
+            print(f"Failed to send order status SMS: {e}")
+            # Don't fail status update if SMS fails
+
     return order
 
 @router.get("/users", response_model=List[UserResponse])
@@ -291,26 +341,26 @@ def get_admin_users(
 ):
     """Get all users with pagination and filters"""
     query = db.query(User).filter(User.is_superuser == False)
-    
+
     if role:
         # In a real app, you'd have a role field. For now, filter by is_superuser
         pass
-    
+
     if is_active is not None:
         query = query.filter(User.is_active == is_active)
-    
+
     if search:
         query = query.filter(
             User.email.ilike(f"%{search}%") |
             User.username.ilike(f"%{search}%") |
             User.full_name.ilike(f"%{search}%")
         )
-    
+
     query = query.order_by(User.created_at.desc())
-    
+
     offset = (page - 1) * per_page
     users = query.offset(offset).limit(per_page).all()
-    
+
     return users
 
 @router.put("/users/{user_id}", response_model=UserResponse)
@@ -322,22 +372,22 @@ def update_user(
 ):
     """Update user role or status"""
     user = db.query(User).filter(User.id == user_id).first()
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     update_data = user_data.model_dump(exclude_unset=True)
-    
+
     # Only allow updating role (is_superuser) and is_active
     if "is_active" in update_data:
         user.is_active = update_data["is_active"]
-    
+
     # For role update, you might want to add a role field to UserUpdate
     # For now, we'll skip it as it's not in the schema
-    
+
     db.commit()
     db.refresh(user)
     return user
@@ -350,19 +400,19 @@ def delete_user(
 ):
     """Delete a user"""
     user = db.query(User).filter(User.id == user_id).first()
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     if user.id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete yourself"
         )
-    
+
     db.delete(user)
     db.commit()
 
@@ -381,7 +431,7 @@ def create_coupon(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Coupon code already exists"
         )
-    
+
     coupon = Coupon(**coupon_data.model_dump())
     db.add(coupon)
     db.commit()
@@ -398,15 +448,15 @@ def get_coupons(
 ):
     """Get all coupons"""
     query = db.query(Coupon)
-    
+
     if is_active is not None:
         query = query.filter(Coupon.is_active == is_active)
-    
+
     query = query.order_by(Coupon.created_at.desc())
-    
+
     offset = (page - 1) * per_page
     coupons = query.offset(offset).limit(per_page).all()
-    
+
     return coupons
 
 @router.put("/coupons/{coupon_id}", response_model=CouponResponse)
@@ -418,17 +468,17 @@ def update_coupon(
 ):
     """Update a coupon"""
     coupon = db.query(Coupon).filter(Coupon.id == coupon_id).first()
-    
+
     if not coupon:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Coupon not found"
         )
-    
+
     update_data = coupon_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(coupon, field, value)
-    
+
     db.commit()
     db.refresh(coupon)
     return coupon
@@ -462,12 +512,12 @@ def validate_coupon(
     This endpoint does NOT require authentication.
     """
     from datetime import datetime
-    
+
     # Find coupon by code (case-insensitive)
     coupon = db.query(Coupon).filter(
         Coupon.code.ilike(validation_data.code.strip())
     ).first()
-    
+
     # Check if coupon exists
     if not coupon:
         return CouponValidateResponse(
@@ -475,7 +525,7 @@ def validate_coupon(
             discount=0.0,
             message="Invalid coupon code"
         )
-    
+
     # Check if coupon is active
     if not coupon.is_active:
         return CouponValidateResponse(
@@ -483,7 +533,7 @@ def validate_coupon(
             discount=0.0,
             message="This coupon has been deactivated"
         )
-    
+
     # Check if coupon has started
     if coupon.starts_at and coupon.starts_at > datetime.utcnow():
         return CouponValidateResponse(
@@ -491,7 +541,7 @@ def validate_coupon(
             discount=0.0,
             message=f"This coupon starts on {coupon.starts_at.strftime('%Y-%m-%d')}"
         )
-    
+
     # Check if coupon has expired
     if coupon.expires_at and coupon.expires_at < datetime.utcnow():
         return CouponValidateResponse(
@@ -499,7 +549,7 @@ def validate_coupon(
             discount=0.0,
             message=f"This coupon expired on {coupon.expires_at.strftime('%Y-%m-%d')}"
         )
-    
+
     # Check usage limit
     if coupon.usage_limit and coupon.used_count >= coupon.usage_limit:
         return CouponValidateResponse(
@@ -507,7 +557,7 @@ def validate_coupon(
             discount=0.0,
             message="This coupon has reached its usage limit"
         )
-    
+
     # Check minimum order amount
     if validation_data.order_total < coupon.min_order_amount:
         return CouponValidateResponse(
@@ -515,7 +565,7 @@ def validate_coupon(
             discount=0.0,
             message=f"Minimum order amount is ${coupon.min_order_amount:.2f}"
         )
-    
+
     # Calculate discount
     if coupon.discount_type == "percentage":
         discount = validation_data.order_total * (coupon.discount_value / 100)
@@ -526,10 +576,10 @@ def validate_coupon(
         discount = coupon.discount_value
         # Don't allow discount to exceed order total
         discount = min(discount, validation_data.order_total)
-    
+
     # Round to 2 decimal places
     discount = round(discount, 2)
-    
+
     return CouponValidateResponse(
         valid=True,
         discount=discount,

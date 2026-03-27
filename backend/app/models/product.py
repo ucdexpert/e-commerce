@@ -57,6 +57,11 @@ class Product(Base):
     view_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)  # Added index
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Flash Sale fields
+    flash_sale_price = Column(Float, nullable=True)
+    flash_sale_start = Column(DateTime, nullable=True)
+    flash_sale_end = Column(DateTime, nullable=True)
 
     # Relationships
     categories = relationship("Category", secondary=product_categories, back_populates="products")

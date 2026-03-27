@@ -1,330 +1,263 @@
-# E-Commerce Full-Stack Application
+# 🛒 E-Shop — Full-Stack E-Commerce Platform
 
-A complete A-Z e-commerce web application built with **Next.js 14** (Frontend), **FastAPI** (Backend), **NeonDB** (PostgreSQL Database), and **JWT Authentication**.
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
+![Frontend](https://img.shields.io/badge/frontend-Next.js%2015-black)
+![Database](https://img.shields.io/badge/database-PostgreSQL-336791)
 
-## 🚀 Features
+A complete, production-ready e-commerce platform built with modern technologies.
 
-### Frontend (Next.js)
-- ✅ Modern responsive design with Tailwind CSS
-- ✅ Product listing with advanced filters & search
-- ✅ Product detail pages with variants
-- ✅ Shopping cart (guest & authenticated)
-- ✅ Wishlist functionality
-- ✅ Checkout with address management
-- ✅ Order tracking & history
-- ✅ User profile management
-- ✅ Authentication (Login/Register)
-- ✅ State management with Zustand
+## 🌐 Live Demo
 
-### Backend (FastAPI)
-- ✅ RESTful API architecture
-- ✅ JWT Authentication (Access + Refresh tokens)
-- ✅ Product management with categories
-- ✅ Cart & Order management
-- ✅ Address book
-- ✅ Wishlist
-- ✅ Search functionality
-- ✅ Inventory tracking
-- ✅ Review system
-- ✅ Coupon system support
+- **Frontend**: https://e-commerce-mu-wheat-87.vercel.app
+- **Backend API**: https://uzair001-e-shop.hf.space
+- **API Docs**: https://uzair001-e-shop.hf.space/api/docs
 
-### Database (NeonDB/PostgreSQL)
-- ✅ Users & Authentication
-- ✅ Products with variants
-- ✅ Categories (hierarchical)
-- ✅ Carts & Cart Items
-- ✅ Orders & Order Items
-- ✅ Addresses
-- ✅ Reviews
-- ✅ Wishlist
-- ✅ Coupons
-- ✅ Inventory Logs
+## ✨ Features
 
-## 📁 Project Structure
+### Customer Features
 
-```
-ecomarce-qwen/
-├── backend/
-│   ├── app/
-│   │   ├── api/           # API Routes
-│   │   │   ├── auth.py
-│   │   │   ├── products.py
-│   │   │   ├── categories.py
-│   │   │   ├── cart.py
-│   │   │   ├── orders.py
-│   │   │   ├── addresses.py
-│   │   │   ├── wishlist.py
-│   │   │   └── search.py
-│   │   ├── core/          # Core utilities
-│   │   │   ├── config.py
-│   │   │   ├── database.py
-│   │   │   └── security.py
-│   │   ├── models/        # SQLAlchemy Models
-│   │   │   └── models.py
-│   │   ├── schemas/       # Pydantic Schemas
-│   │   │   └── schemas.py
-│   │   └── main.py        # FastAPI App
-│   ├── requirements.txt
-│   └── .env.example
-└── frontend/
-    ├── src/
-    │   ├── app/           # Next.js App Router
-    │   │   ├── (pages)/
-    │   │   ├── products/
-    │   │   ├── cart/
-    │   │   ├── checkout/
-    │   │   ├── orders/
-    │   │   ├── profile/
-    │   │   ├── wishlist/
-    │   │   ├── login/
-    │   │   └── register/
-    │   ├── components/    # React Components
-    │   ├── lib/           # Utilities & API
-    │   └── store/         # Zustand Store
-    └── package.json
-```
+- 🔐 JWT Auth + Google OAuth + 2FA
+- 🛍️ Product browsing with filters and search
+- 🛒 Shopping cart with guest support
+- 💳 Multiple payment methods (Stripe, JazzCash, EasyPaisa, COD)
+- 📦 Order tracking with real-time updates
+- ❤️ Wishlist management
+- ⭐ Product reviews and ratings
+- 🔄 Product comparison
+- 👥 Referral program
+- 📧 Email notifications
+- 💬 Live chat support
 
-## 🛠️ Setup Instructions
+### Admin Features
+
+- 📊 Analytics dashboard with charts
+- 📦 Product and inventory management
+- 🏷️ Category management
+- 👥 User management with RBAC
+- 🎟️ Coupon management
+- 📋 Order management
+- 📮 Return management
+- 🚚 Shipping configuration
+- 📰 Newsletter management
+- 🔍 SEO settings
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 15, TypeScript, Tailwind CSS, Zustand |
+| Backend | FastAPI, Python 3.11, SQLAlchemy 2.0 |
+| Database | PostgreSQL (NeonDB) |
+| Cache | Redis (Upstash) |
+| Auth | JWT + Google OAuth (NextAuth) |
+| Payments | Stripe, JazzCash, EasyPaisa |
+| Images | Cloudinary |
+| Email | SendGrid |
+| SMS | Twilio |
+| Monitoring | Sentry, Prometheus |
+| Deployment | Vercel + Hugging Face Spaces |
+| CI/CD | GitHub Actions |
+| Container | Docker + Docker Compose |
+
+## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ and npm
-- Python 3.9+
-- PostgreSQL database (NeonDB recommended)
 
-### 1. Backend Setup
+- Node.js 20+
+- Python 3.11+
+- Docker & Docker Compose (optional)
+- PostgreSQL (or NeonDB account)
+
+### Option 1: Docker (Recommended)
+
+```bash
+# Clone repo
+git clone https://github.com/yourusername/eshop.git
+cd eshop
+
+# Copy environment files
+cp .env.docker backend/.env
+cp .env.docker frontend/.env.local
+# Edit .env files with your values
+
+# Start everything
+make dev
+
+# Or without Make:
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Access
+# Frontend: http://localhost:3000
+# Backend: http://localhost:8000
+# API Docs: http://localhost:8000/api/docs
+# Nginx: http://localhost:80
+```
+
+### Option 2: Manual Setup
+
+#### Backend
 
 ```bash
 cd backend
 
 # Create virtual environment
 python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
+
+# Windows
+venv\Scripts\activate
+# Mac/Linux
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Create .env file
-copy .env.example .env  # Windows
-# cp .env.example .env  # Linux/Mac
+# Setup environment
+cp .env.example .env
+# Edit .env with your values
 
-# Edit .env and add your NeonDB connection string
-# DATABASE_URL=postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/dbname?sslmode=require
-# SECRET_KEY=your-secret-key-min-32-characters
+# Run migrations
+alembic upgrade head
+
+# Start server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 2. Frontend Setup
+#### Frontend
 
 ```bash
 cd frontend
 
 # Install dependencies
-npm install
+npm install --legacy-peer-deps
 
-# Create .env.local file
-echo "NEXT_PUBLIC_API_URL=http://localhost:8000/api" > .env.local
-```
+# Setup environment
+cp .env.example .env.local
+# Edit .env.local with your values
 
-### 3. Run the Application
-
-**Backend:**
-```bash
-cd backend
-venv\Scripts\activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-**Frontend:**
-```bash
-cd frontend
+# Start development server
 npm run dev
 ```
 
-### 4. Access the Application
-
-- **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:8000
-- **API Docs:** http://localhost:8000/api/docs
-
-## 🔑 API Endpoints
-
-### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login user |
-| POST | `/api/auth/refresh` | Refresh access token |
-| GET | `/api/auth/me` | Get current user |
-| PUT | `/api/auth/me` | Update current user |
-
-### Products
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/products` | List all products (with filters) |
-| GET | `/api/products/{id}` | Get product by ID |
-| GET | `/api/products/slug/{slug}` | Get product by slug |
-| GET | `/api/products/search` | Search products |
-| POST | `/api/products` | Create product (admin) |
-| PUT | `/api/products/{id}` | Update product (admin) |
-| DELETE | `/api/products/{id}` | Delete product (admin) |
-
-### Cart
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/cart` | Get user's cart |
-| POST | `/api/cart/items` | Add item to cart |
-| PUT | `/api/cart/items/{id}` | Update cart item |
-| DELETE | `/api/cart/items/{id}` | Remove from cart |
-| DELETE | `/api/cart` | Clear cart |
-
-### Orders
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/orders` | List user's orders |
-| GET | `/api/orders/{id}` | Get order details |
-| POST | `/api/orders` | Create new order |
-| POST | `/api/orders/{id}/cancel` | Cancel order |
-
-### Categories
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/categories` | List categories |
-| POST | `/api/categories` | Create category |
-| PUT | `/api/categories/{id}` | Update category |
-| DELETE | `/api/categories/{id}` | Delete category |
-
-### Addresses
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/addresses` | List user's addresses |
-| POST | `/api/addresses` | Create address |
-| PUT | `/api/addresses/{id}` | Update address |
-| DELETE | `/api/addresses/{id}` | Delete address |
-
-### Wishlist
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/wishlist` | Get user's wishlist |
-| POST | `/api/wishlist/items/{productId}` | Add to wishlist |
-| DELETE | `/api/wishlist/items/{id}` | Remove from wishlist |
-
-## 🎨 Features Overview
-
-### Product Features
-- Product variants (size, color, etc.)
-- Stock management
-- Product images gallery
-- Product reviews & ratings
-- Related products
-- Search with autocomplete
-- Advanced filtering (price, category, rating, etc.)
-- Sorting options
-
-### Cart Features
-- Guest cart support
-- Cart persistence
-- Quantity management
-- Stock validation
-- Automatic totals calculation
-- Free shipping threshold
-
-### Order Features
-- Multiple payment methods (Stripe, COD)
-- Order status tracking
-- Order history
-- Invoice generation
-- Order cancellation
-
-### User Features
-- JWT authentication
-- Profile management
-- Address book
-- Order history
-- Wishlist
-
-## 🔐 Security
-
-- Password hashing with bcrypt
-- JWT tokens with refresh rotation
-- CORS protection
-- SQL injection prevention (SQLAlchemy ORM)
-- Input validation (Pydantic)
-
-## 📦 Database Schema
-
-The application includes the following tables:
-- `users` - User accounts
-- `categories` - Product categories (hierarchical)
-- `products` - Product catalog
-- `product_categories` - Product-Category relationship
-- `carts` - Shopping carts
-- `cart_items` - Cart items
-- `orders` - Customer orders
-- `order_items` - Order line items
-- `addresses` - User addresses
-- `reviews` - Product reviews
-- `wishlists` - User wishlists
-- `wishlist_items` - Wishlist items
-- `coupons` - Discount coupons
-- `inventory_logs` - Stock change history
-
-## 🚀 Deployment
-
-### Backend (Railway/Render/Heroku)
-```bash
-# Set environment variables
-DATABASE_URL=your-neondb-url
-SECRET_KEY=your-secret-key
-CORS_ORIGINS=https://your-frontend-domain.com
-
-# Deploy
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-### Frontend (Vercel)
-```bash
-# Set environment variable
-NEXT_PUBLIC_API_URL=https://your-backend-url.com/api
-
-# Deploy to Vercel
-vercel deploy
-```
-
-## 📝 Environment Variables
+## 🔧 Environment Variables
 
 ### Backend (.env)
-```env
-DATABASE_URL=postgresql://...
-SECRET_KEY=your-secret-key-min-32-chars
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-CORS_ORIGINS=http://localhost:3000
-```
+
+See `backend/.env.example` for all required variables.
+
+Key variables:
+
+- `DATABASE_URL` - PostgreSQL connection string
+- `SECRET_KEY` - JWT secret (min 32 chars)
+- `STRIPE_SECRET_KEY` - Stripe secret key
+- `SENDGRID_API_KEY` - SendGrid API key
+- `CLOUDINARY_CLOUD_NAME` - Cloudinary cloud name
 
 ### Frontend (.env.local)
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
+
+See `frontend/.env.example` for all required variables.
+
+Key variables:
+
+- `NEXT_PUBLIC_API_URL` - Backend API URL
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Stripe public key
+
+## 📦 Deployment
+
+### Frontend → Vercel
+
+1. Connect GitHub repo to Vercel
+2. Set root directory to `frontend/`
+3. Add environment variables
+4. Deploy
+
+### Backend → Hugging Face Spaces
+
+1. Create new Space (Docker SDK)
+2. Push backend code
+3. Add environment variables in Space Settings
+4. App deploys automatically
+
+### CI/CD (GitHub Actions)
+
+Automatic on push to `main`:
+
+- Tests run on every push
+- Frontend deploys to Vercel
+- Backend deploys to Hugging Face
+- Docker images pushed to GitHub Container Registry
+
+## 🐳 Docker Commands
+
+```bash
+# Development
+docker-compose up -d              # Start all services
+docker-compose logs -f            # View logs
+docker-compose down               # Stop all
+docker-compose down -v            # Stop and remove volumes
+
+# Production
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Useful shortcuts with Make
+make dev                          # Start development
+make stop                         # Stop all
+make shell-backend                # Enter backend container
+make migrate                      # Run DB migrations
+make logs service=backend         # View service logs
 ```
+
+## 🗄️ Database Migrations
+
+```bash
+# Apply migrations
+alembic upgrade head
+
+# Create new migration
+alembic revision --autogenerate -m "description"
+
+# Rollback
+alembic downgrade -1
+```
+
+## 🧪 Testing
+
+```bash
+# Backend tests
+cd backend
+pytest tests/ -v
+
+# Frontend tests
+cd frontend
+npm test
+
+# With coverage
+npm run test:coverage
+```
+
+## 📊 API Documentation
+
+Full API docs available at:
+
+- Swagger UI: `/api/docs`
+- ReDoc: `/api/redoc`
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+1. Fork the repo
+2. Create feature branch (`git checkout -b feat/amazing-feature`)
+3. Commit changes (`git commit -m 'feat: Add amazing feature'`)
+4. Push to branch (`git push origin feat/amazing-feature`)
+5. Open Pull Request
 
-## 📄 License
+## 📝 License
 
-This project is licensed under the MIT License.
+MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## 📧 Contact
 
-- Next.js team for the amazing framework
-- FastAPI team for the excellent API framework
-- Tailwind CSS for the utility-first CSS framework
-- Zustand for simple state management
-
----
-
-**Built with ❤️ using Next.js and FastAPI**
+For support or queries, please contact the development team.

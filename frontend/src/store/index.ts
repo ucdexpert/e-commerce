@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { Cart, Product, User, Wishlist } from '@/lib/api';
 import { cartApi, wishlistApi, authApi } from '@/lib/api';
 import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 interface AuthState {
   user: User | null;
@@ -21,6 +22,7 @@ interface RegisterData {
   password: string;
   full_name?: string;
   phone?: string;
+  referral_code?: string;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -306,3 +308,35 @@ export const useUIStore = create<UIState>()(
     }
   )
 );
+
+export const useCompareStore = create<{
+  compareItems: Product[]
+  addToCompare: (product: Product) => void
+  removeFromCompare: (productId: number) => void
+  clearCompare: () => void
+  isInCompare: (productId: number) => boolean
+}>()(
+  persist(
+    (set, get) => ({
+      compareItems: [],
+      addToCompare: (product) => {
+        if (get().compareItems.length >= 4) {
+          toast.error('Maximum 4 products compare ho sakte hain')
+          return
+        }
+        if (get().isInCompare(product.id)) {
+          toast.error('Product already added')
+          return
+        }
+        set({ compareItems: [...get().compareItems, product] })
+        toast.success('Comparison mein add ho gaya!')
+      },
+      removeFromCompare: (productId) =>
+        set({ compareItems: get().compareItems.filter(p => p.id !== productId) }),
+      clearCompare: () => set({ compareItems: [] }),
+      isInCompare: (productId) =>
+        get().compareItems.some(p => p.id === productId),
+    }),
+    { name: 'compare-storage' }
+  )
+)

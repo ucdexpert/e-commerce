@@ -17,32 +17,18 @@ class PermissionCreate(BaseModel):
     description: str = ""
 
 
-class RoleAssignSchema(BaseModel):
-    is_admin: bool = False
-    is_staff: bool = False
-    is_vendor: bool = False
-    permissions: List[str] = []
-
-
 class UserCreateSchema(BaseModel):
     email: EmailStr
     username: str
     password: str
     full_name: str = ""
-    is_admin: bool = False
-    is_staff: bool = False
-    is_vendor: bool = False
-    permissions: List[str] = []
+    is_superuser: bool = False
 
 
 class UserUpdateSchema(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
-    is_admin: Optional[bool] = None
-    is_staff: Optional[bool] = None
-    is_vendor: Optional[bool] = None
-    permissions: Optional[List[str]] = None
-    vendor_store_name: Optional[str] = None
+    is_superuser: Optional[bool] = None
 
 
 class UserResponse(BaseModel):
@@ -55,12 +41,6 @@ class UserResponse(BaseModel):
     is_active: bool
     is_verified: bool
     is_superuser: bool
-    is_admin: bool
-    is_staff: bool
-    is_vendor: bool
-    vendor_store_name: Optional[str]
-    vendor_approved: bool
-    permissions: list
     created_at: datetime
     updated_at: datetime
 
@@ -102,7 +82,7 @@ def get_current_admin(
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ) -> User:
-    """Get current admin or superuser"""
+    """Get current admin or superuser - simplified to just superuser"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
@@ -120,8 +100,8 @@ def get_current_admin(
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
     
-    if not (user.is_superuser or user.is_admin):
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if not user.is_superuser:
+        raise HTTPException(status_code=403, detail="Superuser access required")
     
     return user
 
@@ -171,23 +151,15 @@ def get_all_users(
     db: Session = Depends(get_db)
 ):
     """
-    Get all users (Admin only).
-    Optional role filter: admin, staff, vendor, customer
+    Get all users (Superuser only).
+    Optional role filter: superuser, customer
     """
     query = db.query(User)
     
-    if role_filter == "admin":
-        query = query.filter(User.is_admin == True)
-    elif role_filter == "staff":
-        query = query.filter(User.is_staff == True)
-    elif role_filter == "vendor":
-        query = query.filter(User.is_vendor == True)
+    if role_filter == "superuser":
+        query = query.filter(User.is_superuser == True)
     elif role_filter == "customer":
-        query = query.filter(
-            User.is_admin == False,
-            User.is_staff == False,
-            User.is_vendor == False
-        )
+        query = query.filter(User.is_superuser == False)
     
     users = query.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
     return users
@@ -200,7 +172,7 @@ def get_user(
     db: Session = Depends(get_db)
 ):
     """
-    Get user by ID (Admin only).
+    Get user by ID (Superuser only).
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -216,7 +188,7 @@ def create_user_with_role(
     db: Session = Depends(get_db)
 ):
     """
-    Create a new user with specific roles (Superuser only).
+    Create a new user with specific role (Superuser only).
     """
     # Check if email already exists
     existing = db.query(User).filter(User.email == user_data.email).first()
@@ -234,10 +206,7 @@ def create_user_with_role(
         username=user_data.username,
         hashed_password=get_password_hash(user_data.password),
         full_name=user_data.full_name,
-        is_admin=user_data.is_admin,
-        is_staff=user_data.is_staff,
-        is_vendor=user_data.is_vendor,
-        permissions=user_data.permissions,
+        is_superuser=user_data.is_superuser,
         is_verified=True
     )
     
@@ -248,41 +217,15 @@ def create_user_with_role(
     return user
 
 
-@router.put("/users/{user_id}/role", response_model=UserResponse)
-def update_user_role(
-    user_id: int,
-    role_data: RoleAssignSchema,
-    current_user: User = Depends(get_current_superuser),
-    db: Session = Depends(get_db)
-):
-    """
-    Update user roles and permissions (Superuser only).
-    """
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Update roles
-    user.is_admin = role_data.is_admin
-    user.is_staff = role_data.is_staff
-    user.is_vendor = role_data.is_vendor
-    user.permissions = role_data.permissions
-    
-    db.commit()
-    db.refresh(user)
-    
-    return user
-
-
 @router.put("/users/{user_id}", response_model=UserResponse)
 def update_user(
     user_id: int,
     user_data: UserUpdateSchema,
-    current_user: User = Depends(get_current_admin),
+    current_user: User = Depends(get_current_superuser),
     db: Session = Depends(get_db)
 ):
     """
-    Update user details (Admin only).
+    Update user details (Superuser only).
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -293,16 +236,8 @@ def update_user(
         user.full_name = user_data.full_name
     if user_data.phone is not None:
         user.phone = user_data.phone
-    if user_data.is_admin is not None:
-        user.is_admin = user_data.is_admin
-    if user_data.is_staff is not None:
-        user.is_staff = user_data.is_staff
-    if user_data.is_vendor is not None:
-        user.is_vendor = user_data.is_vendor
-    if user_data.permissions is not None:
-        user.permissions = user_data.permissions
-    if user_data.vendor_store_name is not None:
-        user.vendor_store_name = user_data.vendor_store_name
+    if user_data.is_superuser is not None:
+        user.is_superuser = user_data.is_superuser
     
     db.commit()
     db.refresh(user)
@@ -336,11 +271,11 @@ def delete_user(
 @router.post("/users/{user_id}/activate")
 def activate_user(
     user_id: int,
-    current_user: User = Depends(get_current_admin),
+    current_user: User = Depends(get_current_superuser),
     db: Session = Depends(get_db)
 ):
     """
-    Activate a user account (Admin only).
+    Activate a user account (Superuser only).
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -355,11 +290,11 @@ def activate_user(
 @router.post("/users/{user_id}/deactivate")
 def deactivate_user(
     user_id: int,
-    current_user: User = Depends(get_current_admin),
+    current_user: User = Depends(get_current_superuser),
     db: Session = Depends(get_db)
 ):
     """
-    Deactivate a user account (Admin only).
+    Deactivate a user account (Superuser only).
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -391,53 +326,32 @@ def get_my_permissions(
             "has_all_permissions": True
         }
     
-    # Admins have most permissions
-    if current_user.is_admin:
-        admin_perms = [p["name"] for p in PREDEFINED_PERMISSIONS if not p["name"].startswith("users.")]
-        return {
-            "permissions": admin_perms + current_user.permissions,
-            "is_admin": True,
-            "has_all_permissions": False
-        }
-    
-    # Return user's specific permissions
+    # Regular users have no special permissions
     return {
-        "permissions": current_user.permissions,
-        "is_staff": current_user.is_staff,
-        "is_vendor": current_user.is_vendor,
+        "permissions": [],
+        "is_superuser": False,
         "has_all_permissions": False
     }
 
 
 @router.get("/stats")
 def get_role_statistics(
-    current_user: User = Depends(get_current_admin),
+    current_user: User = Depends(get_current_superuser),
     db: Session = Depends(get_db)
 ):
     """
-    Get statistics about user roles (Admin only).
+    Get statistics about user roles (Superuser only).
     """
     total_users = db.query(User).count()
-    admin_count = db.query(User).filter(User.is_admin == True).count()
-    staff_count = db.query(User).filter(User.is_staff == True).count()
-    vendor_count = db.query(User).filter(User.is_vendor == True).count()
     superuser_count = db.query(User).filter(User.is_superuser == True).count()
     
     # Regular customers
-    customer_count = db.query(User).filter(
-        User.is_admin == False,
-        User.is_staff == False,
-        User.is_vendor == False,
-        User.is_superuser == False
-    ).count()
+    customer_count = db.query(User).filter(User.is_superuser == False).count()
     
     return {
         "total_users": total_users,
         "roles": {
             "superusers": superuser_count,
-            "admins": admin_count,
-            "staff": staff_count,
-            "vendors": vendor_count,
             "customers": customer_count
         }
     }

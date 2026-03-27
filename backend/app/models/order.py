@@ -29,6 +29,11 @@ class Order(Base):
     shipped_at = Column(DateTime, index=True)
     delivered_at = Column(DateTime, index=True)
     cancelled_at = Column(DateTime)
+    
+    # Tracking fields
+    tracking_number = Column(String, nullable=True)
+    estimated_delivery = Column(DateTime, nullable=True)
+    tracking_events = Column(JSON, default=list)
 
     # Relationships
     user = relationship("User", back_populates="orders", foreign_keys=[user_id])

@@ -136,13 +136,19 @@ export default function AdminCategories() {
 
   const onSubmit = async (data: CategoryFormData) => {
     try {
+      // Convert empty string parent_id to undefined/null for API
+      const submitData = {
+        ...data,
+        parent_id: data.parent_id === '' || data.parent_id === null ? null : Number(data.parent_id),
+      };
+
       if (editingCategory) {
         // Update existing category
-        await api.put(`/categories/${editingCategory.id}`, data);
+        await api.put(`/categories/${editingCategory.id}`, submitData);
         toast.success('Category updated successfully');
       } else {
         // Create new category
-        await api.post('/categories/', data);
+        await api.post('/categories/', submitData);
         toast.success('Category created successfully');
       }
       handleCloseModal();
@@ -309,9 +315,9 @@ export default function AdminCategories() {
 
       {/* Add/Edit Category Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg mx-4 sm:mx-auto">
-            <div className="p-4 border-b flex justify-between items-center">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-2xl mx-4 my-8">
+            <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white rounded-t-xl z-10">
               <h2 className="text-xl font-bold">
                 {editingCategory ? 'Edit Category' : 'Add Category'}
               </h2>
@@ -323,7 +329,7 @@ export default function AdminCategories() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
               {/* Name */}
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -357,7 +363,7 @@ export default function AdminCategories() {
               <div>
                 <label className="block text-sm font-medium mb-1">Parent Category</label>
                 <select
-                  {...register('parent_id')}
+                  {...register('parent_id', { valueAsNumber: true })}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">No Parent (Root Category)</option>
@@ -415,6 +421,7 @@ export default function AdminCategories() {
                         accept="image/*"
                         onChange={handleImageUpload}
                         disabled={uploadingImage}
+                        className="text-sm"
                       />
                       {uploadingImage && (
                         <p className="text-sm text-primary mt-2">Uploading...</p>
@@ -425,7 +432,7 @@ export default function AdminCategories() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4 border-t">
+              <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
                 <button
                   type="button"
                   onClick={handleCloseModal}

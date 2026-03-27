@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
-import { ShoppingCart, Heart, Star } from 'lucide-react';
+import { ShoppingCart, Heart, Star, GitCompare, Zap } from 'lucide-react';
 import { Product } from '@/lib/api';
-import { useAuthStore, useCartStore, useWishlistStore } from '@/store';
+import { useAuthStore, useCartStore, useWishlistStore, useCompareStore } from '@/store';
 import { cn, formatPrice } from '@/lib/utils';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import CountdownTimer from '@/components/CountdownTimer';
 
 interface ProductCardProps {
   product: Product;
@@ -18,12 +19,14 @@ export default function ProductCard({ product }: ProductCardProps) {
   const { user, isAuthenticated } = useAuthStore();
   const { addToCart } = useCartStore();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlistStore();
+  const { addToCompare, removeFromCompare, isInCompare } = useCompareStore();
   const [isAdding, setIsAdding] = useState(false);
   const [imageError, setImageError] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   const inWishlist = isInWishlist(product.id);
+  const inCompare = isInCompare(product.id);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -86,8 +89,32 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
   };
 
+  const handleCompareToggle = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      if (inCompare) {
+        await removeFromCompare(product.id);
+        toast.success('Comparison se remove ho gaya');
+      } else {
+        await addToCompare(product);
+      }
+    } catch (error: any) {
+      toast.error('Comparison update nahi ho saka. Dobara try karein');
+    }
+  };
+
+  // Check if flash sale is active
+  const isFlashSaleActive = 
+    product.flash_sale_price && 
+    product.flash_sale_end && 
+    new Date(product.flash_sale_end) > new Date();
+
+  const displayPrice = isFlashSaleActive ? product.flash_sale_price! : product.price;
+  
   const discount = product.compare_price
-    ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100)
+    ? Math.round(((product.compare_price - displayPrice) / product.compare_price) * 100)
     : 0;
 
   const hasImage = product.images && product.images.length > 0 && product.images[0] && !imageError;
@@ -124,17 +151,23 @@ export default function ProductCard({ product }: ProductCardProps) {
 
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
-            {product.is_on_sale && discount > 0 && (
+            {isFlashSaleActive && (
+              <span className="bg-gradient-to-r from-red-600 to-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
+                <Zap className="w-3 h-3" />
+                FLASH
+              </span>
+            )}
+            {!isFlashSaleActive && product.is_on_sale && discount > 0 && (
               <span className="bg-danger text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
                 -{discount}%
               </span>
             )}
-            {product.is_featured && (
+            {!isFlashSaleActive && product.is_featured && (
               <span className="bg-secondary text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
                 FEATURED
               </span>
             )}
-            {product.is_on_sale && discount <= 0 && (
+            {!isFlashSaleActive && product.is_on_sale && discount <= 0 && (
               <span className="bg-danger text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
                 SALE
               </span>
@@ -154,6 +187,21 @@ export default function ProductCard({ product }: ProductCardProps) {
             aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
           >
             <Heart className={cn("w-4 h-4", inWishlist ? "fill-current" : "")} />
+          </button>
+
+          {/* Compare Button */}
+          <button
+            onClick={handleCompareToggle}
+            className={cn(
+              "absolute top-2 right-14 p-2 rounded-full backdrop-blur-sm transition-all duration-200 shadow-md",
+              "hover:scale-110 active:scale-90",
+              inCompare
+                ? "bg-green-100 text-green-600"
+                : "bg-white/90 text-gray-600 hover:bg-gray-100"
+            )}
+            aria-label={inCompare ? "Remove from compare" : "Add to compare"}
+          >
+            <GitCompare className="w-4 h-4" />
           </button>
 
           {/* Quick Add to Cart - Appears on hover */}
@@ -219,17 +267,26 @@ export default function ProductCard({ product }: ProductCardProps) {
           )}
 
           {/* Price - Pushed to bottom */}
-          <div className="mt-auto flex items-baseline gap-1.5">
-            <span className={cn(
-              "text-base font-bold",
-              product.is_on_sale ? "text-danger" : "text-primary"
-            )}>
-              {formatPrice(product.price)}
-            </span>
-            {product.compare_price && (
-              <span className="text-xs text-muted line-through">
-                {formatPrice(product.compare_price)}
+          <div className="mt-auto space-y-2">
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className={cn(
+                "text-base font-bold",
+                isFlashSaleActive ? "text-red-600" : product.is_on_sale ? "text-danger" : "text-primary"
+              )}>
+                {formatPrice(displayPrice)}
               </span>
+              {(product.compare_price || (isFlashSaleActive && product.price !== displayPrice)) && (
+                <span className="text-xs text-muted line-through">
+                  {formatPrice(isFlashSaleActive ? product.price : product.compare_price!)}
+                </span>
+              )}
+            </div>
+            
+            {/* Flash Sale Countdown Timer */}
+            {isFlashSaleActive && product.flash_sale_end && (
+              <div className="pt-1">
+                <CountdownTimer endTime={product.flash_sale_end} size="small" />
+              </div>
             )}
           </div>
         </div>

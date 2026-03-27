@@ -1,0 +1,57 @@
+name: Deploy Backend to Hugging Face
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Hugging Face Spaces
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: pip install -r requirements.txt
+
+      - name: Basic backend health check
+        working-directory: ./backend
+        run: python -c "from app.main import app; print('Backend imports OK')"
+
+      - name: Deploy to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface_hub
+          python << 'EOF'
+          import os
+          from huggingface_hub import HfApi
+
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          api.upload_folder(
+              folder_path="backend",
+              repo_id="${{ secrets.HF_SPACE_ID }}",
+              repo_type="space",
+              ignore_patterns=["__pycache__", "*.pyc", ".env", "venv", "tests"]
+          )
+          print("Deployed to Hugging Face!")
+          EOF
+
+      - name: Notify deployment
+        if: success()
+        run: echo "Backend deployed to https://huggingface.co/spaces/${{ secrets.HF_SPACE_ID }}"

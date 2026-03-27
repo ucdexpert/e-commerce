@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Filter,
   Image as ImageIcon,
+  Download,
 } from 'lucide-react';
 import { cn, formatPrice } from '@/lib/utils';
 
@@ -42,9 +43,13 @@ const productSchema = z.object({
   is_featured: z.boolean(),
   is_active: z.boolean(),
   is_on_sale: z.boolean(),
+  // Flash Sale fields
+  flash_sale_price: z.number().optional().or(z.literal(0)),
+  flash_sale_start: z.string().optional().or(z.literal('')),
+  flash_sale_end: z.string().optional().or(z.literal('')),
 });
 
-type ProductFormData = z.infer<typeof productSchema> & { 
+type ProductFormData = z.infer<typeof productSchema> & {
   is_featured: boolean;
   is_active: boolean;
   is_on_sale: boolean;
@@ -64,6 +69,9 @@ interface Product {
   images: string[];
   categories: { id: number; name: string }[];
   created_at: string;
+  flash_sale_price?: number | null;
+  flash_sale_start?: string | null;
+  flash_sale_end?: string | null;
 }
 
 interface Category {
@@ -88,6 +96,12 @@ export default function AdminProducts() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
 
+  // Import/Export state
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const [exporting, setExporting] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -111,6 +125,9 @@ export default function AdminProducts() {
       is_featured: false,
       is_active: true,
       is_on_sale: false,
+      flash_sale_price: undefined,
+      flash_sale_start: '',
+      flash_sale_end: '',
     },
   });
 
@@ -172,6 +189,9 @@ export default function AdminProducts() {
         is_featured: product.is_featured,
         is_active: product.is_active,
         is_on_sale: product.is_on_sale,
+        flash_sale_price: product.flash_sale_price || undefined,
+        flash_sale_start: product.flash_sale_start ? new Date(product.flash_sale_start).toISOString().slice(0, 16) : '',
+        flash_sale_end: product.flash_sale_end ? new Date(product.flash_sale_end).toISOString().slice(0, 16) : '',
       });
     } else {
       setEditingProduct(null);
@@ -189,6 +209,9 @@ export default function AdminProducts() {
         is_featured: false,
         is_active: true,
         is_on_sale: false,
+        flash_sale_price: undefined,
+        flash_sale_start: '',
+        flash_sale_end: '',
       });
     }
     setIsModalOpen(true);
@@ -353,18 +376,154 @@ export default function AdminProducts() {
     }
   };
 
+  // Import/Export handlers
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const response = await api.get('/bulk/products/export', {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `products_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Products exported successfully!');
+    } catch (e: any) {
+      console.error('Export failed:', e);
+      toast.error('Export failed. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) {
+      toast.error('Please select a CSV file');
+      return;
+    }
+    
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      
+      const res = await api.post('/bulk/products/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      setImportResult(res.data);
+      toast.success(res.data.message || 'Import completed!');
+      
+      if (res.data.errors && res.data.errors.length > 0) {
+        console.error('Import errors:', res.data.errors);
+        toast.error(`${res.data.errors.length} rows had errors. Check console.`);
+      }
+      
+      fetchProducts();
+      setImportFile(null);
+    } catch (e: any) {
+      console.error('Import failed:', e);
+      toast.error(e.response?.data?.detail || 'Import failed. Please try again.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadTemplate = () => {
+    const headers = 'name,slug,description,short_description,price,compare_price,cost,sku,barcode,stock_quantity,low_stock_threshold,is_active,is_featured,is_on_sale,weight\n';
+    const sample = 'Sample Product,sample-product,Full description of the product goes here,Short description,99.99,129.99,50.00,SKU001,BAR001,100,10,true,false,false,0.5\n';
+    const blob = new Blob([headers + sample], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'products_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Template downloaded!');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold">Products</h1>
-        <button
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-        >
-          <Plus className="w-5 h-5" />
-          Add Product
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
+          
+          <label className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <Upload className="w-4 h-4" /> Import CSV
+            <input
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+            />
+          </label>
+          
+          <button
+            onClick={() => handleOpenModal()}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+          >
+            <Plus className="w-5 h-5" /> Add Product
+          </button>
+        </div>
+      </div>
+
+      {/* Import File Status */}
+      {importFile && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Download className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="font-medium text-blue-900">{importFile.name}</p>
+              <p className="text-sm text-blue-600">{(importFile.size / 1024).toFixed(2)} KB</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setImportFile(null)}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleImport}
+              disabled={importing}
+              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {importing ? 'Importing...' : 'Upload & Import'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Template Download */}
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium text-gray-800">Bulk Import Products</p>
+            <p className="text-sm text-gray-600">
+              Download the CSV template, fill in your products, then upload using the Import button above.
+            </p>
+          </div>
+          <button
+            onClick={downloadTemplate}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg font-medium"
+          >
+            <Download className="w-4 h-4" /> Download Template
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -861,6 +1020,73 @@ export default function AdminProducts() {
                     className="w-5 h-5 rounded"
                   />
                 </label>
+              </div>
+
+              {/* Flash Sale Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-lg">⚡ Flash Sale</h3>
+                  <span className="text-xs bg-gradient-to-r from-red-600 to-orange-500 text-white px-2 py-0.5 rounded-full font-medium">
+                    Limited Time Deal
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Set a special flash sale price with a countdown timer. The sale will automatically end when the timer expires.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Flash Sale Price (Rs.)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      {...register('flash_sale_price', { valueAsNumber: true })}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Special flash sale price"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Leave empty to disable flash sale
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Start Date & Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      {...register('flash_sale_start')}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      When the flash sale begins
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      End Date & Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      {...register('flash_sale_end')}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      When the flash sale ends
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    <strong>💡 Tip:</strong> Flash sales create urgency and boost conversions. 
+                    Set the end time 24-48 hours from now for best results. 
+                    Products with active flash sales will show a countdown timer and FLASH badge.
+                  </p>
+                </div>
               </div>
 
               {/* Actions */}

@@ -5,6 +5,7 @@ import Footer from '@/components/Footer';
 import CookieConsent from '@/components/CookieConsent';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import AuthSync from '@/components/AuthSync';
+import CompareBar from '@/components/CompareBar';
 
 export const metadata: Metadata = {
   title: {
@@ -95,6 +96,7 @@ export default function ShopLayout({
       </main>
       <Footer />
       <CookieConsent />
+      <CompareBar />
 
       {/* Tawk.to Live Chat */}
       <Script

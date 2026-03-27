@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store';
-import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Gift } from 'lucide-react';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
   const { register, isLoading } = useAuthStore();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     username: '',
@@ -18,6 +20,14 @@ export default function RegisterPage() {
     full_name: '',
     phone: '',
   });
+
+  useEffect(() => {
+    // Auto-fill referral code from URL if present
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setReferralCode(ref);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +59,7 @@ export default function RegisterPage() {
         password: formData.password,
         full_name: formData.full_name || undefined,
         phone: formData.phone || undefined,
+        referral_code: referralCode || undefined,
       });
       router.push('/');
     } catch (err: any) {
@@ -169,6 +180,27 @@ export default function RegisterPage() {
               </ul>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Referral Code <span className="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <div className="relative">
+                <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  placeholder="ABCD1234"
+                  className="w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary uppercase tracking-widest font-mono"
+                />
+              </div>
+              {referralCode && (
+                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                  <Gift className="w-3 h-3" /> Your referrer will earn $10 when you sign up!
+                </p>
+              )}
+            </div>
+
             <button
               type="submit"
               disabled={isLoading}
@@ -188,5 +220,17 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }

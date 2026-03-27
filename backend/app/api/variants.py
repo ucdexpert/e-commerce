@@ -36,12 +36,12 @@ def get_current_admin_user(
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ) -> User:
-    """Get current admin user - requires admin role"""
+    """Get current admin user - requires superuser role"""
     user = get_current_user(authorization, db)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    if not user.is_admin:
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if not user.is_superuser:
+        raise HTTPException(status_code=403, detail="Superuser access required")
     return user
 
 

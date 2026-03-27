@@ -148,6 +148,7 @@ export default function Header() {
     { href: '/products?is_on_sale=true', label: 'Sale' },
     { href: '/products?is_featured=true', label: 'Featured' },
     { href: '/products?sort_by=rating&sort_order=desc', label: 'Best Sellers' },
+    { href: '/track', label: 'Track Order' },
   ];
 
   return (
@@ -172,11 +173,11 @@ export default function Header() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary
                             flex items-center justify-center text-white font-bold text-xl
                             group-hover:scale-105 transition-transform shadow-md">
-              E
+              C
             </div>
             <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-secondary
                            bg-clip-text text-transparent hidden sm:block">
-              E-Shop
+              CartHub
             </span>
           </Link>
 

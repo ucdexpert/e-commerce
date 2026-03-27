@@ -17,6 +17,34 @@ from ..utils.cloudinary import upload_base64_image
 from .admin import get_current_admin_user
 import uuid
 import re
+import os
+
+# Redis caching - disable if not available
+try:
+    from fastapi_cache import FastAPICache
+    from fastapi_cache.decorator import cache
+    from fastapi_cache.backends.redis import RedisBackend
+    import redis.asyncio as aioredis
+    
+    # Try to initialize cache
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    try:
+        redis_client = aioredis.from_url(redis_url)
+        FastAPICache.init(RedisBackend(redis_client), prefix="eshop-cache")
+        print("✓ Redis cache initialized")
+    except Exception as e:
+        print(f"⚠ Redis not available, caching disabled: {e}")
+        # Create a dummy cache decorator that does nothing
+        def cache(expire: int):
+            def decorator(func):
+                return func
+            return decorator
+except ImportError:
+    # Create a dummy cache decorator that does nothing
+    def cache(expire: int):
+        def decorator(func):
+            return func
+        return decorator
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -98,7 +126,8 @@ def create_product(
     return product
 
 @router.get("/", response_model=ProductListResponse)
-def get_products(
+@cache(expire=300)  # Cache for 5 minutes
+async def get_products(
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=100),
     search: Optional[str] = None,
@@ -406,3 +435,28 @@ def add_review(
     db.refresh(product)
 
     return {"message": "Review added successfully", "product": product}
+
+
+@router.get("/flash-sales", response_model=ProductListResponse)
+def get_flash_sales(
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """Get active flash sale products"""
+    now = datetime.utcnow()
+    query = db.query(Product).filter(
+        Product.flash_sale_price.isnot(None),
+        Product.flash_sale_end > now,
+        Product.is_active == True
+    )
+    
+    total = query.count()
+    products = query.offset(skip).limit(limit).all()
+    
+    return ProductListResponse(
+        products=products,
+        total=total,
+        skip=skip,
+        limit=limit
+    )

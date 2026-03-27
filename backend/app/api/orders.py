@@ -13,6 +13,7 @@ from ..schemas import (
     OrderItemResponse,
 )
 from ..utils.email import send_order_confirmation_email
+from ..utils.sms import send_order_sms
 import random
 import string
 import stripe
@@ -215,6 +216,16 @@ def create_order(
     except Exception as e:
         print(f"Failed to send order confirmation email: {e}")
         # Don't fail order creation if email fails
+
+    # Send order confirmation SMS (only for authenticated users with SMS enabled)
+    if current_user_id:
+        try:
+            user = db.query(User).filter(User.id == current_user_id).first()
+            if user and user.phone and user.sms_notifications_enabled:
+                send_order_sms(user.phone, order.order_number, "pending")
+        except Exception as e:
+            print(f"Failed to send order confirmation SMS: {e}")
+            # Don't fail order creation if SMS fails
 
     return order
 
@@ -454,7 +465,7 @@ async def get_order_invoice(
         alignment=1
     )
     elements.append(Paragraph("Thank you for your business!", footer_style))
-    elements.append(Paragraph("E-Shop | support@eshop.com | +1 (555) 123-4567", footer_style))
+    elements.append(Paragraph("E-Shop |  | +1 (555) 123-4567", footer_style))
     
     # Build PDF
     doc.build(elements)
@@ -690,17 +701,17 @@ async def confirm_payment(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update this order"
         )
-    
+
     try:
         # Retrieve payment intent from Stripe
         intent = stripe.PaymentIntent.retrieve(payment_intent_id)
-        
+
         if intent.status == "succeeded":
             order.payment_status = "paid"
             order.payment_intent_id = payment_intent_id
             order.status = "processing"
             db.commit()
-            
+
             return {
                 "message": "Payment confirmed successfully",
                 "order": order
@@ -715,3 +726,31 @@ async def confirm_payment(
     except Exception as e:
         print(f"Payment confirmation error: {e}")
         raise HTTPException(status_code=500, detail=f"Payment confirmation failed: {str(e)}")
+
+
+@router.get("/track/{order_number}")
+async def track_order(order_number: str, db: Session = Depends(get_db)):
+    """
+    Public endpoint to track an order by order number.
+    No authentication required - anyone with the order number can track it.
+    """
+    order = db.query(Order).filter(Order.order_number == order_number).first()
+    if not order:
+        raise HTTPException(404, "Order not found")
+    
+    return {
+        "order_number": order.order_number,
+        "status": order.status,
+        "payment_status": order.payment_status,
+        "tracking_number": order.tracking_number,
+        "estimated_delivery": order.estimated_delivery,
+        "shipping_address": {
+            "city": order.shipping_address.city if order.shipping_address else None,
+            "state": order.shipping_address.state if order.shipping_address else None,
+            "country": order.shipping_address.country if order.shipping_address else None,
+        },
+        "tracking_events": order.tracking_events or [],
+        "created_at": order.created_at,
+        "shipped_at": order.shipped_at,
+        "delivered_at": order.delivered_at,
+    }

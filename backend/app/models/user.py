@@ -19,18 +19,17 @@ class User(Base):
     
     # Role-based access control
     is_superuser = Column(Boolean, default=False)  # Full access (super admin)
-    is_admin = Column(Boolean, default=False)  # Admin access
-    is_staff = Column(Boolean, default=False)  # Staff with limited permissions
-    is_vendor = Column(Boolean, default=False)  # Vendor/seller
     
-    # Granular permissions (JSON array)
-    # Example: ["products.create", "products.edit", "orders.view"]
-    permissions = Column(JSON, default=list)
+    # Referral program
+    referral_code = Column(String, unique=True, nullable=True)
     
-    # Vendor-specific fields
-    vendor_store_name = Column(String)  # Store name for vendors
-    vendor_approved = Column(Boolean, default=False)  # Whether vendor is approved
-    
+    # Two-Factor Authentication
+    totp_secret = Column(String, nullable=True)
+    two_factor_enabled = Column(Boolean, default=False)
+
+    # SMS Notifications
+    sms_notifications_enabled = Column(Boolean, default=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -1,8 +1,54 @@
+'use client';
+
 import Link from 'next/link';
-import { Facebook, Twitter, Instagram, Mail, Phone, MapPin, Heart } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Mail, Phone, MapPin, Heart, Loader2, Check } from 'lucide-react';
+import { useState } from 'react';
+import toast from 'react-hot-toast';
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  
+  // Newsletter state
+  const [footerEmail, setFooterEmail] = useState('');
+  const [footerLoading, setFooterLoading] = useState(false);
+  const [footerSubscribed, setFooterSubscribed] = useState(false);
+
+  const handleFooterSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!footerEmail || !footerEmail.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setFooterLoading(true);
+    
+    try {
+      const response = await axios.post(
+        `${API_URL}/newsletter/subscribe`,
+        null,
+        {
+          params: {
+            email: footerEmail,
+            source: 'footer'
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        toast.success(response.data.message);
+        setFooterSubscribed(true);
+        setFooterEmail('');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to subscribe. Please try again.');
+    } finally {
+      setFooterLoading(false);
+    }
+  };
 
   return (
     <footer className="bg-gray-900 text-gray-300">
@@ -14,9 +60,9 @@ export default function Footer() {
             <Link href="/" className="inline-flex items-center gap-2 mb-4">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary
                               flex items-center justify-center text-white font-bold text-xl">
-                E
+                C
               </div>
-              <span className="text-xl md:text-2xl font-bold text-white">E-Shop</span>
+              <span className="text-xl md:text-2xl font-bold text-white">CartHub</span>
             </Link>
             <p className="text-sm md:text-base text-gray-400 mb-6 leading-relaxed">
               Your one-stop destination for quality products at amazing prices.
@@ -42,7 +88,7 @@ export default function Footer() {
               <FooterLink href="/products?is_on_sale=true" label="Sale Items" />
               <FooterLink href="/products?is_featured=true" label="Featured" />
               <FooterLink href="/products?sort_by=rating&sort_order=desc" label="Best Sellers" />
-              <FooterLink href="/orders" label="Track Order" />
+              <FooterLink href="/track" label="Track Order" />
             </ul>
           </div>
 
@@ -57,65 +103,65 @@ export default function Footer() {
               <FooterLink href="/faq" label="FAQ" />
               <FooterLink href="/faq#returns" label="Return Policy" />
               <FooterLink href="/profile" label="My Account" />
-              <FooterLink href="/orders" label="Track Order" />
+              <FooterLink href="/track" label="Track Order" />
               <FooterLink href="/wishlist" label="Wishlist" />
             </ul>
           </div>
 
-          {/* Contact Info */}
+          {/* Newsletter Subscription */}
           <div>
             <h4 className="text-base md:text-lg font-bold text-white mb-5 flex items-center gap-2">
               <span className="w-1 h-5 bg-gradient-to-b from-primary to-secondary rounded-full" />
-              Contact Us
+              Newsletter
             </h4>
-            <ul className="space-y-4">
-              <li className="flex items-start gap-3 group">
-                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center
-                              group-hover:bg-primary/20 transition-colors">
-                  <Mail className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Email</p>
-                  <a href="mailto:hassankhilji26@gmail.com" className="text-sm hover:text-primary transition-colors">
-                    hassankhilji26@gmail.com
-                  </a>
-                </div>
-              </li>
-              <li className="flex items-start gap-3 group">
-                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center
-                              group-hover:bg-primary/20 transition-colors">
-                  <Phone className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Phone</p>
-                  <a href="tel:+923170219387" className="text-sm hover:text-primary transition-colors">
-                    +92 317-0219387
-                  </a>
-                </div>
-              </li>
-              <li className="flex items-start gap-3 group">
-                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center
-                              group-hover:bg-primary/20 transition-colors">
-                  <Phone className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">WhatsApp</p>
-                  <a href="https://wa.me/923170219387" className="text-sm hover:text-primary transition-colors">
-                    +92 317-0219387
-                  </a>
-                </div>
-              </li>
-              <li className="flex items-start gap-3 group">
-                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center
-                              group-hover:bg-primary/20 transition-colors">
-                  <MapPin className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Address</p>
-                  <span className="text-sm">Karachi, Pakistan</span>
-                </div>
-              </li>
-            </ul>
+            <p className="text-sm text-gray-400 mb-4">
+              Subscribe to get special offers and updates
+            </p>
+            
+            {footerSubscribed ? (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
+                <Check className="w-6 h-6 text-green-500 mx-auto mb-2" />
+                <p className="text-green-400 text-sm font-medium">Subscribed!</p>
+                <p className="text-gray-400 text-xs mt-1">Check your inbox for offers</p>
+              </div>
+            ) : (
+              <form onSubmit={handleFooterSubscribe} className="space-y-2">
+                <input
+                  type="email"
+                  value={footerEmail}
+                  onChange={(e) => setFooterEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="w-full px-3 py-2.5 rounded-lg bg-gray-800 border border-gray-700 
+                           text-white placeholder-gray-500 focus:outline-none focus:ring-2 
+                           focus:ring-primary focus:border-transparent text-sm"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={footerLoading}
+                  className="w-full px-4 py-2.5 bg-primary text-white font-medium rounded-lg
+                           hover:bg-primary/90 transition-all duration-200 text-sm
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           flex items-center justify-center gap-2"
+                >
+                  {footerLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Subscribing...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4" />
+                      Subscribe
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+            
+            <p className="text-xs text-gray-500 mt-2">
+              By subscribing, you agree to our Privacy Policy
+            </p>
           </div>
         </div>
       </div>
@@ -125,9 +171,9 @@ export default function Footer() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-gray-400">
-              © {currentYear} E-Shop. All rights reserved.
+              © {currentYear} CartHub. All rights reserved.
             </p>
-            
+
             <div className="flex flex-wrap justify-center gap-6">
               <Link href="/privacy" className="text-sm text-gray-400 hover:text-white transition-colors">
                 Privacy Policy
@@ -142,9 +188,9 @@ export default function Footer() {
                 Contact Us
               </Link>
             </div>
-            
+
             <p className="text-sm text-gray-500 flex items-center gap-1">
-              Made with <Heart className="w-3 h-3 text-danger fill-danger" /> for our customers
+              Crafted by<Heart className="w-3 h-3 text-danger fill-danger" /> Muhammad Uzair
             </p>
           </div>
         </div>

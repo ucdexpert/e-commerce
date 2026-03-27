@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store';
-import { addressesApi, ordersApi, Address, Order } from '@/lib/api';
-import { User, Mail, Phone, MapPin, Edit2, LogOut, Package, Heart, ShoppingBag } from 'lucide-react';
+import { addressesApi, ordersApi, Address, Order, api } from '@/lib/api';
+import { User, Mail, Phone, MapPin, Edit2, LogOut, Package, Heart, ShoppingBag, Shield, Smartphone, QrCode, Trash2, MessageSquare } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import toast from 'react-hot-toast';
+import TwoFactorModal from '@/components/TwoFactorModal';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -28,6 +30,7 @@ export default function ProfilePage() {
     setValue('email', user.email);
     setValue('full_name', user.full_name || '');
     setValue('phone', user.phone || '');
+    setValue('sms_notifications_enabled', user.sms_notifications_enabled ?? true);
 
     // Fetch addresses and orders
     fetchAddresses();
@@ -59,10 +62,13 @@ export default function ProfilePage() {
         email: data.email,
         full_name: data.full_name,
         phone: data.phone,
+        sms_notifications_enabled: data.sms_notifications_enabled,
       });
       setIsEditing(false);
+      toast.success('Profile updated successfully');
     } catch (error) {
       console.error('Failed to update profile:', error);
+      toast.error('Failed to update profile');
     }
   };
 
@@ -124,9 +130,33 @@ export default function ProfilePage() {
                   <label className="block text-sm font-medium mb-1">Phone</label>
                   <input
                     {...register('phone')}
+                    type="tel"
+                    placeholder="+1 (555) 123-4567"
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
+                
+                {/* SMS Notifications Toggle */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <MessageSquare className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">SMS Notifications</p>
+                      <p className="text-xs text-gray-500">Receive order updates via SMS</p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      {...register('sms_notifications_enabled')}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
                 <button
                   type="submit"
                   className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
@@ -162,6 +192,19 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   )}
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500">SMS Notifications</p>
+                      <p className="font-medium">
+                        {user.sms_notifications_enabled ? (
+                          <span className="text-green-600">Enabled</span>
+                        ) : (
+                          <span className="text-gray-500">Disabled</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
                 </div>
                 <p className="text-sm text-gray-500">
                   Member since {new Date(user.created_at).toLocaleDateString()}

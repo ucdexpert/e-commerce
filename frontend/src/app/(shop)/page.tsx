@@ -6,14 +6,24 @@ import { productsApi, categoriesApi, Product, Category } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 import CategoryCard from '@/components/CategoryCard';
 import RecentlyViewed from '@/components/RecentlyViewed';
-import { ChevronRight, Truck, Tag, Award, RefreshCcw, ShoppingBag, Zap } from 'lucide-react';
+import { ChevronRight, Truck, Tag, Award, RefreshCcw, ShoppingBag, Zap, Mail, Check, Loader2 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
+import toast from 'react-hot-toast';
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 export default function HomePage() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [saleProducts, setSaleProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Newsletter state
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterName, setNewsletterName] = useState('');
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
+  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -34,6 +44,42 @@ export default function HomePage() {
     }
     fetchData();
   }, []);
+
+  const handleNewsletterSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newsletterEmail || !newsletterEmail.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setNewsletterLoading(true);
+    
+    try {
+      const response = await axios.post(
+        `${API_URL}/newsletter/subscribe`,
+        null,
+        {
+          params: {
+            email: newsletterEmail,
+            name: newsletterName || undefined,
+            source: 'website'
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        toast.success(response.data.message);
+        setNewsletterSubscribed(true);
+        setNewsletterEmail('');
+        setNewsletterName('');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to subscribe. Please try again.');
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -306,7 +352,7 @@ export default function HomePage() {
       <RecentlyViewed />
 
       {/* Newsletter - Redesigned */}
-      <section className="py-12 bg-gradient-to-r from-primary to-secondary relative overflow-hidden">
+      <section className="py-12 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl" />
@@ -315,38 +361,83 @@ export default function HomePage() {
 
         <div className="relative container mx-auto px-4 text-center">
           <div className="max-w-xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs font-medium text-white mb-4">
-              <span>📧</span>
-              <span>Get 10% off your first order</span>
-            </div>
+            {newsletterSubscribed ? (
+              <>
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-full mb-4 mx-auto">
+                  <Check className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl md:text-4xl font-bold text-white mb-3">
+                  You're Subscribed!
+                </h2>
+                <p className="text-sm md:text-base text-white/80 mb-6">
+                  Thank you for subscribing. Check your inbox for a 10% discount code!
+                </p>
+                <button
+                  onClick={() => setNewsletterSubscribed(false)}
+                  className="px-6 py-3 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white font-medium rounded-lg hover:bg-white/20 transition-all duration-200"
+                >
+                  Subscribe Another Email
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs font-medium text-white mb-4">
+                  <Mail className="w-3 h-3" />
+                  <span>Get 10% off your first order</span>
+                </div>
 
-            <h2 className="text-2xl md:text-4xl font-bold text-white mb-3">
-              Subscribe to Our Newsletter
-            </h2>
-            <p className="text-sm md:text-base text-white/80 mb-6">
-              Get the latest updates on new products and upcoming sales
-            </p>
+                <h2 className="text-2xl md:text-4xl font-bold text-white mb-3">
+                  Subscribe to Our Newsletter
+                </h2>
+                <p className="text-sm md:text-base text-white/80 mb-6">
+                  Get the latest updates on new products and upcoming sales
+                </p>
 
-            <form className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-1 px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500
-                         focus:outline-none focus:ring-2 focus:ring-white/50 shadow-lg text-sm"
-              />
-              <button
-                type="submit"
-                className="px-6 py-3 bg-white text-primary font-bold rounded-lg
-                         hover:bg-gray-100 transition-all duration-200 shadow-lg
-                         hover:shadow-xl active:scale-95 text-sm"
-              >
-                Subscribe
-              </button>
-            </form>
+                <form onSubmit={handleNewsletterSubscribe} className="space-y-3 max-w-md mx-auto">
+                  <input
+                    type="email"
+                    value={newsletterName}
+                    onChange={(e) => setNewsletterName(e.target.value)}
+                    placeholder="Your name (optional)"
+                    className="w-full px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500
+                             focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-lg text-sm"
+                  />
+                  <input
+                    type="email"
+                    value={newsletterEmail}
+                    onChange={(e) => setNewsletterEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="w-full px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500
+                             focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-lg text-sm"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={newsletterLoading}
+                    className="w-full px-6 py-3 bg-yellow-400 text-gray-900 font-bold rounded-lg
+                             hover:bg-yellow-500 transition-all duration-200 shadow-lg
+                             hover:shadow-xl active:scale-95 text-sm disabled:opacity-50 disabled:cursor-not-allowed
+                             flex items-center justify-center gap-2"
+                  >
+                    {newsletterLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Subscribing...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4" />
+                        Subscribe Now
+                      </>
+                    )}
+                  </button>
+                </form>
 
-            <p className="text-xs text-white/60 mt-3">
-              By subscribing, you agree to our Terms & Privacy Policy
-            </p>
+                <p className="text-xs text-white/60 mt-3">
+                  By subscribing, you agree to our Terms & Privacy Policy
+                </p>
+              </>
+            )}
           </div>
         </div>
       </section>

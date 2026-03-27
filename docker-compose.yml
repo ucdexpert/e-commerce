@@ -1,0 +1,79 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: eshop_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/code
+    env_file:
+      - ./backend/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - eshop_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: eshop_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - backend
+    networks:
+      - eshop_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: eshop_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - eshop_network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: eshop_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - eshop_network
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+networks:
+  eshop_network:
+    driver: bridge

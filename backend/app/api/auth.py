@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request, Query
 from sqlalchemy.orm import Session
 from typing import Any, Optional
 from slowapi import Limiter
@@ -11,7 +11,7 @@ from ..core.security import (
     create_refresh_token,
     decode_token
 )
-from ..models import User, Cart, Wishlist
+from ..models import User, Cart, Wishlist, Referral
 from ..schemas import (
     UserCreate,
     UserResponse,
@@ -28,6 +28,10 @@ from pydantic import BaseModel, EmailStr
 import re
 from jose import jwt
 import os
+import pyotp
+import qrcode
+import io
+import base64
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -183,6 +187,23 @@ async def register(request: Request, user_data: UserCreate, db: Session = Depend
     # Create empty wishlist for user
     wishlist = Wishlist(user_id=user.id)
     db.add(wishlist)
+
+    # Handle referral code if provided
+    if user_data.referral_code:
+        referrer = db.query(User).filter(User.referral_code == user_data.referral_code).first()
+        if referrer and referrer.id != user.id:
+            # Check if user already has a referral
+            existing_referral = db.query(Referral).filter(Referral.referred_id == user.id).first()
+            if not existing_referral:
+                new_referral = Referral(
+                    referrer_id=referrer.id,
+                    referred_id=user.id,
+                    referral_code=user_data.referral_code,
+                    status="completed",
+                    completed_at=datetime.utcnow()
+                )
+                db.add(new_referral)
+                print(f"Referral recorded: User {referrer.username} referred {user.username}")
 
     db.commit()
 
@@ -628,3 +649,156 @@ async def social_login(
             created_at=user.created_at
         )
     )
+
+
+# =============================================================================
+# TWO-FACTOR AUTHENTICATION (2FA)
+# =============================================================================
+
+class TwoFactorSetupResponse(BaseModel):
+    secret: str
+    qr_code: str
+    manual_entry: str
+    uri: str
+
+class TwoFactorVerifyRequest(BaseModel):
+    code: str
+
+class TwoFactorVerifySetupRequest(BaseModel):
+    code: str
+
+class TwoFactorDisableRequest(BaseModel):
+    code: str
+
+@router.post("/2fa/setup", response_model=TwoFactorSetupResponse)
+async def setup_2fa(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Setup 2FA for current user - generates secret and QR code"""
+    # Generate secret
+    secret = pyotp.random_base32()
+    current_user.totp_secret = secret
+    db.commit()
+
+    # Create TOTP URI
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(
+        name=current_user.email,
+        issuer_name="E-Shop"
+    )
+
+    # Generate QR code
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(uri)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    qr_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+    return {
+        "secret": secret,
+        "qr_code": f"data:image/png;base64,{qr_base64}",
+        "manual_entry": secret,
+        "uri": uri
+    }
+
+
+@router.post("/2fa/verify-setup")
+async def verify_2fa_setup(
+    request: TwoFactorVerifySetupRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Verify 2FA setup code and enable 2FA"""
+    if not current_user.totp_secret:
+        raise HTTPException(status_code=400, detail="2FA not set up. Please call /2fa/setup first.")
+
+    totp = pyotp.TOTP(current_user.totp_secret)
+    if not totp.verify(request.code, valid_window=1):
+        raise HTTPException(status_code=400, detail="Invalid code. Please try again.")
+
+    current_user.two_factor_enabled = True
+    db.commit()
+    
+    return {"message": "2FA enabled successfully!"}
+
+
+@router.post("/2fa/verify")
+async def verify_2fa(
+    request: TwoFactorVerifyRequest,
+    temp_token: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Verify 2FA code during login.
+    Called after initial login when user has 2FA enabled.
+    """
+    try:
+        # Verify temp token and get user
+        payload = jwt.decode(temp_token, os.getenv("SECRET_KEY"), algorithms=["HS256"])
+        user_id = payload.get("sub")
+        user = db.query(User).filter(User.id == int(user_id)).first()
+
+        if not user or not user.totp_secret:
+            raise HTTPException(status_code=400, detail="Invalid request")
+
+        # Verify 2FA code
+        totp = pyotp.TOTP(user.totp_secret)
+        if not totp.verify(request.code, valid_window=1):
+            raise HTTPException(status_code=400, detail="Invalid 2FA code")
+
+        # Generate real tokens
+        access_token = create_access_token({"sub": str(user.id)})
+        refresh_token = create_refresh_token({"sub": str(user.id)})
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "username": user.username,
+                "full_name": user.full_name,
+                "is_active": user.is_active,
+                "two_factor_enabled": user.two_factor_enabled
+            }
+        }
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Temp token expired. Please login again.")
+    except jwt.JWTError:
+        raise HTTPException(status_code=400, detail="Invalid temp token")
+
+
+@router.post("/2fa/disable")
+async def disable_2fa(
+    request: TwoFactorDisableRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Disable 2FA for current user"""
+    if not current_user.totp_secret:
+        raise HTTPException(status_code=400, detail="2FA not enabled")
+
+    totp = pyotp.TOTP(current_user.totp_secret)
+    if not totp.verify(request.code, valid_window=1):
+        raise HTTPException(status_code=400, detail="Invalid code")
+
+    current_user.two_factor_enabled = False
+    current_user.totp_secret = None
+    db.commit()
+    
+    return {"message": "2FA disabled successfully"}
+
+
+@router.get("/2fa/status")
+async def get_2fa_status(
+    current_user: User = Depends(get_current_user)
+):
+    """Get current user's 2FA status"""
+    return {
+        "enabled": current_user.two_factor_enabled and current_user.totp_secret is not None,
+        "setup_required": current_user.totp_secret is None and not current_user.two_factor_enabled
+    }

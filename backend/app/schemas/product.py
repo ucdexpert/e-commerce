@@ -49,6 +49,10 @@ class ProductBase(BaseModel):
     attributes: Dict[str, Any] = {}
     variants: List[Dict[str, Any]] = []
     category_ids: List[int] = []
+    # Flash Sale fields
+    flash_sale_price: Optional[float] = None
+    flash_sale_start: Optional[datetime] = None
+    flash_sale_end: Optional[datetime] = None
 
 
 class ProductCreate(ProductBase):
@@ -67,6 +71,10 @@ class ProductUpdate(BaseModel):
     is_on_sale: Optional[bool] = None
     images: Optional[List[str]] = None
     attributes: Optional[Dict[str, Any]] = None
+    # Flash Sale fields
+    flash_sale_price: Optional[float] = None
+    flash_sale_start: Optional[datetime] = None
+    flash_sale_end: Optional[datetime] = None
 
 
 class ProductResponse(ProductBase):
@@ -86,6 +94,8 @@ class ProductResponse(ProductBase):
 class ProductListResponse(BaseModel):
     products: List[ProductResponse]
     total: int
-    page: int
-    per_page: int
-    total_pages: int
+    page: Optional[int] = None
+    per_page: Optional[int] = None
+    total_pages: Optional[int] = None
+    skip: Optional[int] = None
+    limit: Optional[int] = None

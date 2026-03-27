@@ -160,9 +160,10 @@ export const ordersApi = {
   getAll: (params?: OrderParams) => api.get('/orders/', { params }),
   getById: (id: number) => api.get(`/orders/${id}`),
   create: (data: OrderCreateData) => api.post('/orders/', data),
-  cancel: (id: number, reason?: string) => 
+  cancel: (id: number, reason?: string) =>
     api.post(`/orders/${id}/cancel`, null, { params: { reason } }),
   getInvoice: (id: number) => api.get(`/orders/${id}/invoice`),
+  track: (orderNumber: string) => api.get(`/orders/track/${orderNumber}`),
 };
 
 // Addresses APIs
@@ -198,6 +199,7 @@ export interface RegisterData {
   password: string;
   full_name?: string;
   phone?: string;
+  sms_notifications_enabled?: boolean;
 }
 
 export interface LoginData {
@@ -213,6 +215,10 @@ export interface User {
   phone?: string;
   avatar?: string;
   is_active: boolean;
+  is_verified?: boolean;
+  is_superuser?: boolean;
+  two_factor_enabled?: boolean;
+  sms_notifications_enabled?: boolean;
   created_at: string;
 }
 
@@ -239,6 +245,10 @@ export interface Product {
   categories?: Category[];
   created_at: string;
   updated_at: string;
+  // Flash Sale fields
+  flash_sale_price?: number | null;
+  flash_sale_start?: string | null;
+  flash_sale_end?: string | null;
 }
 
 export interface ProductParams {
