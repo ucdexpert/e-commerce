@@ -42,6 +42,7 @@ jobs:
           pip install huggingface_hub
           python << 'EOF'
           import os
+          import shutil
           from huggingface_hub import HfApi
 
           token = os.environ.get("HF_TOKEN")
@@ -51,9 +52,26 @@ jobs:
               print("HF_TOKEN or HF_SPACE_ID not set, skipping deployment")
               exit(0)
 
+          # Create temp directory for deployment
+          deploy_dir = "hf_deploy"
+          os.makedirs(deploy_dir, exist_ok=True)
+          
+          # Copy all backend files
+          for item in os.listdir("backend"):
+              src = os.path.join("backend", item)
+              dst = os.path.join(deploy_dir, item)
+              if os.path.isdir(src) and item not in ["__pycache__", "venv", "tests"]:
+                  shutil.copytree(src, dst, dirs_exist_ok=True)
+              elif os.path.isfile(src) and not item.endswith((".pyc", ".log")):
+                  shutil.copy2(src, dst)
+          
+          # Copy app.py to root (for Hugging Face Spaces)
+          if os.path.exists("backend/app.py"):
+              shutil.copy2("backend/app.py", os.path.join(deploy_dir, "app.py"))
+
           api = HfApi(token=token)
           api.upload_folder(
-              folder_path="backend",
+              folder_path=deploy_dir,
               repo_id=space_id,
               repo_type="space",
               ignore_patterns=[
@@ -61,5 +79,10 @@ jobs:
                   "venv", "tests", "*.log"
               ]
           )
+          
+          # Cleanup
+          import shutil
+          shutil.rmtree(deploy_dir)
+          
           print(f"Deployed to https://huggingface.co/spaces/{space_id}")
           EOF
