@@ -1,11 +1,18 @@
 import { MetadataRoute } from 'next'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+
 async function getProducts() {
   try {
+    if (!API_URL || !API_URL.startsWith('http')) {
+      console.warn('API_URL not configured, skipping product sitemap')
+      return []
+    }
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/products/?per_page=500&is_active=true`,
+      `${API_URL}/products/?per_page=500&is_active=true`,
       { next: { revalidate: 3600 } }
     )
+    if (!res.ok) return []
     const data = await res.json()
     return data.products || []
   } catch (error) {
@@ -16,10 +23,15 @@ async function getProducts() {
 
 async function getCategories() {
   try {
+    if (!API_URL || !API_URL.startsWith('http')) {
+      console.warn('API_URL not configured, skipping category sitemap')
+      return []
+    }
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/categories/all`,
+      `${API_URL}/categories/all`,
       { next: { revalidate: 3600 } }
     )
+    if (!res.ok) return []
     return await res.json() || []
   } catch (error) {
     console.error('Failed to fetch categories for sitemap:', error)
