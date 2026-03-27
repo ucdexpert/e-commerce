@@ -16,8 +16,8 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_USER: testuser
-          POSTGRES_PASSWORD: testpass
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
           POSTGRES_DB: testdb
         ports:
           - 5432:5432
@@ -62,7 +62,7 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb
           SECRET_KEY: test-secret-key-for-testing-only-32chars
           REDIS_URL: redis://localhost:6379
           ENVIRONMENT: test
@@ -87,11 +87,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm install --legacy-peer-deps
 
       - name: Run TypeScript check
         run: npx tsc --noEmit || true
@@ -105,10 +103,3 @@ jobs:
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
           NEXT_PUBLIC_APP_URL: https://example.com
         run: npm run build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build
-          path: .next/
-          retention-days: 1
