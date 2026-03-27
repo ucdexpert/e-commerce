@@ -129,7 +129,7 @@ def create_product(
 @cache(expire=300)  # Cache for 5 minutes
 async def get_products(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
+    per_page: int = Query(10, ge=1, le=500),
     search: Optional[str] = None,
     category_id: Optional[int] = None,
     min_price: Optional[float] = None,
@@ -198,7 +198,7 @@ async def get_products(
 def search_products(
     q: str = Query(..., min_length=1),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
     db: Session = Depends(get_db)
 ):
     query = db.query(Product).filter(

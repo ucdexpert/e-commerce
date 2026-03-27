@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(taskkill *)",
-      "Bash(timeout *)"
+      "Bash(timeout *)",
+      "WebFetch(github.com)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   },
   "$version": 3
