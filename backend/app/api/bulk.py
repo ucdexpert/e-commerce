@@ -10,7 +10,7 @@ import io
 import re
 from datetime import datetime
 
-router = APIRouter()
+router = APIRouter(prefix="/bulk", tags=["Bulk Operations"])
 
 
 @router.get("/products/export")

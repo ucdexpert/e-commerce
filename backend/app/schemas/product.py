@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -26,9 +26,13 @@ class CategoryUpdate(BaseModel):
 
 class CategoryResponse(CategoryBase):
     id: int
+    parent: Optional['CategoryResponse'] = None
+    children: List['CategoryResponse'] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra='ignore'
+    )
 
 
 # ============ Product Schemas ============
@@ -87,8 +91,39 @@ class ProductResponse(ProductBase):
     updated_at: datetime
     categories: List[CategoryResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FlashSaleProductResponse(BaseModel):
+    """Simplified product response for flash sales without categories to avoid serialization issues"""
+    id: int
+    name: str
+    slug: str
+    description: Optional[str] = None
+    short_description: Optional[str] = None
+    price: float
+    compare_price: Optional[float] = None
+    sku: Optional[str] = None
+    stock_quantity: int = 0
+    is_active: bool = True
+    is_featured: bool = False
+    is_on_sale: bool = False
+    images: List[str] = []
+    rating: float = 0
+    review_count: int = 0
+    sold_count: int = 0
+    flash_sale_price: Optional[float] = None
+    flash_sale_start: Optional[datetime] = None
+    flash_sale_end: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FlashSaleListResponse(BaseModel):
+    products: List[FlashSaleProductResponse]
+    total: int
+    skip: Optional[int] = None
+    limit: Optional[int] = None
 
 
 class ProductListResponse(BaseModel):

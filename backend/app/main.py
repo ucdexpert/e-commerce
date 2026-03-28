@@ -47,9 +47,9 @@ async def startup():
         redis = aioredis.from_url(redis_url)
         await redis.ping()
         FastAPICache.init(RedisBackend(redis), prefix="eshop-cache")
-        print("✓ Redis cache connected!")
+        print("[OK] Redis cache connected!")
     except Exception as e:
-        print(f"⚠ Redis not available, continuing without cache: {e}")
+        print(f"[WARN] Redis not available, continuing without cache: {e}")
         # Continue without caching - app will still work
 
 # ============== GLOBAL EXCEPTION HANDLERS ==============

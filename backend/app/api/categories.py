@@ -19,9 +19,9 @@ try:
     try:
         redis_client = aioredis.from_url(redis_url)
         FastAPICache.init(RedisBackend(redis_client), prefix="eshop-cache")
-        print("✓ Redis cache initialized for categories")
+        print("[OK] Redis cache initialized for categories")
     except Exception as e:
-        print(f"⚠ Redis not available, caching disabled for categories: {e}")
+        print(f"[WARN] Redis not available, caching disabled for categories: {e}")
         # Create a dummy cache decorator that does nothing
         def cache(expire: int):
             def decorator(func):

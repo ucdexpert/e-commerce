@@ -137,9 +137,9 @@ def get_password_reset_template(user, token) -> str:
                 
                 <p>Or copy and paste this link:</p>
                 <p style="word-break: break-all; color: #666;">{reset_link}</p>
-                
+
                 <div class="warning">
-                    <strong>⚠️ Important:</strong> This link expires in 1 hour. If you didn't request this, please ignore this email.
+                    <strong>[WARNING] Important:</strong> This link expires in 1 hour. If you didn't request this, please ignore this email.
                 </div>
             </div>
         </div>

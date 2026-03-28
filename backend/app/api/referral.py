@@ -11,7 +11,7 @@ import secrets
 import string
 from typing import List, Optional
 
-router = APIRouter()
+router = APIRouter(prefix="/referral", tags=["Referral"])
 
 
 def generate_referral_code(length=8):

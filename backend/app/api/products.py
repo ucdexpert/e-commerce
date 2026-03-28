@@ -11,6 +11,7 @@ from ..schemas import (
     ProductResponse,
     ProductListResponse,
     CategoryResponse,
+    FlashSaleListResponse,
 )
 from datetime import datetime
 from ..utils.cloudinary import upload_base64_image
@@ -31,9 +32,9 @@ try:
     try:
         redis_client = aioredis.from_url(redis_url)
         FastAPICache.init(RedisBackend(redis_client), prefix="eshop-cache")
-        print("✓ Redis cache initialized")
+        print("[OK] Redis cache initialized")
     except Exception as e:
-        print(f"⚠ Redis not available, caching disabled: {e}")
+        print(f"[WARN] Redis not available, caching disabled: {e}")
         # Create a dummy cache decorator that does nothing
         def cache(expire: int):
             def decorator(func):
@@ -437,7 +438,7 @@ def add_review(
     return {"message": "Review added successfully", "product": product}
 
 
-@router.get("/flash-sales", response_model=ProductListResponse)
+@router.get("/flash-sales", response_model=FlashSaleListResponse)
 def get_flash_sales(
     skip: int = 0,
     limit: int = 20,
@@ -450,11 +451,11 @@ def get_flash_sales(
         Product.flash_sale_end > now,
         Product.is_active == True
     )
-    
+
     total = query.count()
     products = query.offset(skip).limit(limit).all()
-    
-    return ProductListResponse(
+
+    return FlashSaleListResponse(
         products=products,
         total=total,
         skip=skip,

@@ -25,7 +25,6 @@ class Category(Base):
 
     # Relationships
     parent = relationship("Category", remote_side=[id], backref="children")
-    products = relationship("Product", secondary=product_categories, back_populates="categories")
 
 
 class Product(Base):
@@ -64,7 +63,7 @@ class Product(Base):
     flash_sale_end = Column(DateTime, nullable=True)
 
     # Relationships
-    categories = relationship("Category", secondary=product_categories, back_populates="products")
+    categories = relationship("Category", secondary=product_categories)
     reviews = relationship("Review", back_populates="product")
     cart_items = relationship("CartItem", back_populates="product")
     order_items = relationship("OrderItem", back_populates="product")

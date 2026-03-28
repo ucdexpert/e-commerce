@@ -20,6 +20,8 @@ from .product import (
     ProductUpdate,
     ProductResponse,
     ProductListResponse,
+    FlashSaleProductResponse,
+    FlashSaleListResponse,
 )
 
 from .cart import (
@@ -91,6 +93,8 @@ __all__ = [
     "ProductUpdate",
     "ProductResponse",
     "ProductListResponse",
+    "FlashSaleProductResponse",
+    "FlashSaleListResponse",
     # Cart
     "CartItemBase",
     "CartItemCreate",
