@@ -20,32 +20,11 @@ import uuid
 import re
 import os
 
-# Redis caching - disable if not available
-try:
-    from fastapi_cache import FastAPICache
-    from fastapi_cache.decorator import cache
-    from fastapi_cache.backends.redis import RedisBackend
-    import redis.asyncio as aioredis
-    
-    # Try to initialize cache
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-    try:
-        redis_client = aioredis.from_url(redis_url)
-        FastAPICache.init(RedisBackend(redis_client), prefix="eshop-cache")
-        print("[OK] Redis cache initialized")
-    except Exception as e:
-        print(f"[WARN] Redis not available, caching disabled: {e}")
-        # Create a dummy cache decorator that does nothing
-        def cache(expire: int):
-            def decorator(func):
-                return func
-            return decorator
-except ImportError:
-    # Create a dummy cache decorator that does nothing
-    def cache(expire: int):
-        def decorator(func):
-            return func
-        return decorator
+# Disable Redis caching to prevent timeout issues
+def cache(expire: int):
+    def decorator(func):
+        return func
+    return decorator
 
 router = APIRouter(prefix="/products", tags=["Products"])
 

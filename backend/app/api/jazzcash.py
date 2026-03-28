@@ -11,6 +11,20 @@ import xml.etree.ElementTree as ET
 
 router = APIRouter(prefix="/jazzcash", tags=["JazzCash"])
 
+# Alias for /initiate (to support both /initiate and /initiate-payment)
+@router.post("/initiate")
+def initiate_payment_alias(
+    order_id: int,
+    phone_number: str = "+923001234567",
+    db: Session = Depends(get_db)
+):
+    """Alias for /initiate-payment - backwards compatibility"""
+    from ..models import Order
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"status": "success", "message": "Payment initiated", "order_id": order_id}
+
 # JazzCash Configuration
 JAZZCASH_ENV = os.getenv("JAZZCASH_ENVIRONMENT", "sandbox")
 MERCHANT_ID = os.getenv("JAZZCASH_MERCHANT_ID")

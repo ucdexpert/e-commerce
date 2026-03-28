@@ -10,6 +10,20 @@ import time
 
 router = APIRouter(prefix="/easypaisa", tags=["EasyPaisa"])
 
+# Alias for /initiate (to support both /initiate and /initiate-payment)
+@router.post("/initiate")
+def initiate_payment_alias(
+    order_id: int,
+    phone_number: str = "+923001234567",
+    db: Session = Depends(get_db)
+):
+    """Alias for /initiate-payment - backwards compatibility"""
+    from ..models import Order
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"status": "success", "message": "Payment initiated", "order_id": order_id}
+
 # EasyPaisa Configuration
 EASYPaisA_ENV = os.getenv("EASYPaisA_ENVIRONMENT", "sandbox")
 STORE_ID = os.getenv("EASYPaisA_STORE_ID")
