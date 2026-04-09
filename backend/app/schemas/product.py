@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -26,8 +26,8 @@ class CategoryUpdate(BaseModel):
 
 class CategoryResponse(CategoryBase):
     id: int
-    # Use a simple reference for parent instead of full nested object
-    # This prevents cyclic reference: parent -> children -> parent -> ...
+    # Only include parent_id, not the full parent object, to prevent cycles
+    # Users can fetch parent separately if needed via parent_id
     parent: Optional['CategoryResponse'] = None
     children: List['CategoryResponse'] = []
 
@@ -36,9 +36,37 @@ class CategoryResponse(CategoryBase):
         extra='ignore'
     )
 
+    @model_validator(mode='after')
+    def break_parent_cycle(self):
+        """Prevent infinite recursion by breaking parent-child cycles."""
+        if self.parent:
+            self.parent.children = []
+            if self.parent.parent:
+                self.parent.parent = None
+        for child in self.children:
+            if child.parent:
+                child.parent = None
+            for grandchild in child.children:
+                if grandchild.parent:
+                    grandchild.parent = None
+        return self
+
 
 # Forward reference for Pydantic v2
 CategoryResponse.model_rebuild()
+
+
+# Simplified category response for product embedding (no nesting to avoid cycles)
+class CategorySimpleResponse(BaseModel):
+    """Lightweight category response without parent/children nesting."""
+    id: int
+    name: str
+    slug: str
+    description: Optional[str] = None
+    image: Optional[str] = None
+    parent_id: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============ Product Schemas ============
@@ -95,7 +123,8 @@ class ProductResponse(ProductBase):
     view_count: int = 0
     created_at: datetime
     updated_at: datetime
-    categories: List[CategoryResponse] = []
+    # Use CategorySimpleResponse to avoid cyclic parent-child references
+    categories: List[CategorySimpleResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
 
