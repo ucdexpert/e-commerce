@@ -310,6 +310,10 @@ id_ed25519.pub
 *.token
 *.secret
 
+# Google OAuth credentials
+client_secret*.json
+client_secret_*.json
+
 # -----------------------------------------------------------------------------
 # DOCKER (Optional - uncomment if using Docker)
 # -----------------------------------------------------------------------------
