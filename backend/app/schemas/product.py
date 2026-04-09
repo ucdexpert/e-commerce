@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -26,6 +26,8 @@ class CategoryUpdate(BaseModel):
 
 class CategoryResponse(CategoryBase):
     id: int
+    # Use a simple reference for parent instead of full nested object
+    # This prevents cyclic reference: parent -> children -> parent -> ...
     parent: Optional['CategoryResponse'] = None
     children: List['CategoryResponse'] = []
 
@@ -33,6 +35,10 @@ class CategoryResponse(CategoryBase):
         from_attributes=True,
         extra='ignore'
     )
+
+
+# Forward reference for Pydantic v2
+CategoryResponse.model_rebuild()
 
 
 # ============ Product Schemas ============

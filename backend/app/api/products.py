@@ -18,6 +18,15 @@ from ..utils.cloudinary import upload_base64_image
 from .admin import get_current_admin_user
 import uuid
 import re
+
+
+def break_category_cycle(categories):
+    """Break cyclic references in category parent-child relationships."""
+    for category in categories:
+        if category.parent:
+            # Break the cycle by clearing parent's children reference
+            category.parent = None
+    return categories
 import os
 
 # Disable Redis caching to prevent timeout issues
@@ -166,6 +175,10 @@ async def get_products(
     offset = (page - 1) * per_page
     products = query.offset(offset).limit(per_page).all()
     
+    # Break cyclic references in categories before serialization
+    for product in products:
+        break_category_cycle(product.categories)
+
     return ProductListResponse(
         products=products,
         total=total,
@@ -195,6 +208,10 @@ def search_products(
     offset = (page - 1) * per_page
     products = query.offset(offset).limit(per_page).all()
     
+    # Break cyclic references in categories before serialization
+    for product in products:
+        break_category_cycle(product.categories)
+
     return ProductListResponse(
         products=products,
         total=total,
@@ -330,6 +347,10 @@ def get_related_products(
         Product.is_active == True,
         Product.categories.any(Category.id.in_(category_ids))
     ).limit(limit).all()
+    
+    # Break cyclic references in categories before serialization
+    for product in related:
+        break_category_cycle(product.categories)
 
     return ProductListResponse(
         products=related,
