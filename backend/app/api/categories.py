@@ -48,11 +48,6 @@ def create_category(
 @cache(expire=600)  # Cache for 10 minutes
 def get_categories(db: Session = Depends(get_db)):
     categories = db.query(Category).filter(Category.parent_id == None).all()
-    # Break cyclic references at SQLAlchemy level before Pydantic serialization
-    for category in categories:
-        for child in category.children:
-            # Clear child's reference back to parent to prevent cycle
-            child.parent = None
     return categories
 
 @router.get("/all", response_model=List[CategoryResponse])
@@ -62,9 +57,6 @@ def get_all_categories(db: Session = Depends(get_db)):
     # Only return top-level categories to avoid duplication
     # (children are accessible via the children field)
     top_level = [c for c in categories if c.parent_id is None]
-    for category in top_level:
-        for child in category.children:
-            child.parent = None
     return top_level
 
 @router.get("/{category_id}", response_model=CategoryResponse)

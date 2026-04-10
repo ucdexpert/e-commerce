@@ -26,9 +26,6 @@ class CategoryUpdate(BaseModel):
 
 class CategoryResponse(CategoryBase):
     id: int
-    # Only include parent_id, not the full parent object, to prevent cycles
-    # Users can fetch parent separately if needed via parent_id
-    parent: Optional['CategoryResponse'] = None
     children: List['CategoryResponse'] = []
 
     model_config = ConfigDict(
@@ -37,18 +34,10 @@ class CategoryResponse(CategoryBase):
     )
 
     @model_validator(mode='after')
-    def break_parent_cycle(self):
-        """Prevent infinite recursion by breaking parent-child cycles."""
-        if self.parent:
-            self.parent.children = []
-            if self.parent.parent:
-                self.parent.parent = None
+    def break_children_cycles(self):
+        """Prevent infinite recursion by breaking child-parent cycles."""
         for child in self.children:
-            if child.parent:
-                child.parent = None
-            for grandchild in child.children:
-                if grandchild.parent:
-                    grandchild.parent = None
+            child.children = []  # Only go one level deep
         return self
 
 

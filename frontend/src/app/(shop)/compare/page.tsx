@@ -32,22 +32,22 @@ export default function ComparePage() {
   const handleAddToCart = async (productId: number, productName: string) => {
     if (!user) {
       router.push(`/login?redirect=/compare`);
-      toast.error('Cart mein add karne ke liye login karein');
+      toast.error('Please log in to add items to cart');
       return;
     }
 
     setAddingToCart(productId);
     try {
       await addToCart(productId, 1);
-      toast.success(`${productName} cart mein add ho gaya!`);
+      toast.success(`${productName} added to cart!`);
     } catch (error: any) {
       const status = error.response?.status;
       const msg = error.response?.data?.detail;
 
       if (status === 400 && msg?.includes('stock')) {
-        toast.error('Yeh product stock mein nahi hai');
+        toast.error('This product is out of stock');
       } else {
-        toast.error('Cart mein add nahi ho saka');
+        toast.error('Failed to add to cart');
       }
     } finally {
       setAddingToCart(null);
@@ -56,7 +56,7 @@ export default function ComparePage() {
 
   const handleRemoveProduct = (id: number) => {
     removeFromCompare(id);
-    toast.success('Product comparison se remove ho gaya');
+    toast.success('Product removed from comparison');
   };
 
   // Find best values for highlighting

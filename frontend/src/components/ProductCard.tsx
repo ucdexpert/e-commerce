@@ -35,7 +35,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     // Check if user is logged in
     if (!user) {
       router.push(`/login?redirect=${pathname}`);
-      toast.error('Cart mein add karne ke liye login karein');
+      toast.error('Please log in to add items to cart');
       return;
     }
 
@@ -43,17 +43,17 @@ export default function ProductCard({ product }: ProductCardProps) {
     setIsAdding(true);
     try {
       await addToCart(product.id, 1);
-      toast.success(`${product.name} cart mein add ho gaya!`);
+      toast.success(`${product.name} added to cart!`);
     } catch (error: any) {
       const status = error.response?.status;
       const msg = error.response?.data?.detail;
-      
+
       if (status === 400 && msg?.includes('stock')) {
-        toast.error('Yeh product stock mein nahi hai');
+        toast.error('This product is out of stock');
       } else if (status === 400) {
-        toast.error(msg || 'Cart mein add nahi ho saka');
+        toast.error(msg || 'Failed to add to cart');
       } else {
-        toast.error('Cart mein add nahi ho saka. Dobara try karein');
+        toast.error('Unable to add to cart. Please try again');
       }
     } finally {
       setIsAdding(false);
@@ -67,7 +67,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     // Check if user is logged in
     if (!user) {
       router.push(`/login?redirect=${pathname}`);
-      toast.error('Save karne ke liye login karein');
+      toast.error('Please log in to save items');
       return;
     }
 
@@ -78,14 +78,14 @@ export default function ProductCard({ product }: ProductCardProps) {
         );
         if (item) {
           await removeFromWishlist(item.id);
-          toast.success('Wishlist se remove ho gaya');
+          toast.success('Removed from wishlist');
         }
       } else {
         await addToWishlist(product.id);
-        toast.success('Wishlist mein add ho gaya!');
+        toast.success('Added to wishlist!');
       }
     } catch (error: any) {
-      toast.error('Wishlist update nahi ho saka. Dobara try karein');
+      toast.error('Unable to update wishlist. Please try again');
     }
   };
 
@@ -96,12 +96,12 @@ export default function ProductCard({ product }: ProductCardProps) {
     try {
       if (inCompare) {
         await removeFromCompare(product.id);
-        toast.success('Comparison se remove ho gaya');
+        toast.success('Removed from comparison');
       } else {
         await addToCompare(product);
       }
     } catch (error: any) {
-      toast.error('Comparison update nahi ho saka. Dobara try karein');
+      toast.error('Unable to update comparison. Please try again');
     }
   };
 

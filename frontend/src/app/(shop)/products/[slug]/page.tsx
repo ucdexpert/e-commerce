@@ -206,24 +206,24 @@ export default function ProductDetailPage() {
     // Check if user is logged in
     if (!user) {
       router.push(`/login?redirect=/products/${product.slug}`);
-      toast.error('Cart mein add karne ke liye login karein');
+      toast.error('Please log in to add items to cart');
       return;
     }
 
     setIsAdding(true);
     try {
       await addToCart(product.id, quantity, Object.keys(selectedVariant).length ? selectedVariant : undefined);
-      toast.success('Cart mein add ho gaya!');
+      toast.success('Added to cart successfully!');
     } catch (error: any) {
       const status = error.response?.status;
       const msg = error.response?.data?.detail;
-      
+
       if (status === 400 && msg?.includes('stock')) {
-        toast.error('Yeh product stock mein nahi hai');
+        toast.error('This product is out of stock');
       } else if (status === 400) {
-        toast.error(msg || 'Cart mein add nahi ho saka');
+        toast.error(msg || 'Failed to add to cart');
       } else {
-        toast.error('Cart mein add nahi ho saka. Dobara try karein');
+        toast.error('Unable to add to cart. Please try again');
       }
     } finally {
       setIsAdding(false);
@@ -233,7 +233,7 @@ export default function ProductDetailPage() {
   const handleBuyNow = async () => {
     // Check if user is logged in
     if (!user || !product) {
-      toast.error('Please login karein');
+      toast.error('Please log in to continue');
       router.push('/login');
       return;
     }
